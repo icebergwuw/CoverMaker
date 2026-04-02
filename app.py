@@ -203,11 +203,38 @@ dropZone.ondrop = e => {
 document.getElementById('fileInput').onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
 
 function loadFile(file) {
-  selectedFile = file;
-  dropZone.textContent = '✓ ' + file.name;
-  dropZone.style.borderColor = '#4A8FA0';
-  dropZone.style.color = '#4A8FA0';
-  checkReady(); schedulePreview();
+  // 压缩图片到 2MB 以内再存储，避免 Vercel 413
+  const MAX_BYTES = 2 * 1024 * 1024;
+  if (file.size <= MAX_BYTES) {
+    selectedFile = file;
+    dropZone.textContent = '✓ ' + file.name;
+    dropZone.style.borderColor = '#4A8FA0';
+    dropZone.style.color = '#4A8FA0';
+    checkReady(); schedulePreview();
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      // 按比例缩小直到文件估算 < 2MB
+      const scale = Math.sqrt(MAX_BYTES / file.size) * 0.9;
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        selectedFile = new File([blob], file.name, { type: 'image/jpeg' });
+        dropZone.textContent = '✓ ' + file.name + ' (已压缩)';
+        dropZone.style.borderColor = '#4A8FA0';
+        dropZone.style.color = '#4A8FA0';
+        checkReady(); schedulePreview();
+      }, 'image/jpeg', 0.85);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 document.getElementById('titleInput').oninput = () => { checkReady(); schedulePreview(); };
