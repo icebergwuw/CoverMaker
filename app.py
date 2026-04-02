@@ -360,6 +360,9 @@ def open_browser():
     webbrowser.open("http://127.0.0.1:5299")
 
 if __name__ == "__main__":
-    threading.Thread(target=open_browser, daemon=True).start()
-    print("Cover Maker 启动中 → http://127.0.0.1:5299")
-    app.run(port=5299, debug=False)
+    port = int(os.environ.get("PORT", 5299))
+    is_local = port == 5299
+    if is_local:
+        threading.Thread(target=open_browser, daemon=True).start()
+        print("Cover Maker 启动中 → http://127.0.0.1:5299")
+    app.run(host="0.0.0.0", port=port, debug=False)
