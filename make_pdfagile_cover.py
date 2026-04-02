@@ -7,8 +7,8 @@ make_pdfagile_cover.py — 生成 PDF Agile 模板封面图（1200×630）
 import sys, os
 from PIL import Image, ImageDraw, ImageFont
 
-ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
-FONT_PATH  = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+FONT_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "Montserrat-Bold.ttf")
 
 W, H = 1200, 630
 
@@ -121,9 +121,10 @@ def make_pdfagile_cover(preview_path, title, output_path=None):
         # 加阴影
         shadowed, pad = _drop_shadow(rotated, offset_y=6, blur=30, color=(225, 182, 182))
 
-        # 垂直居中
-        py = (H - shadowed.size[1]) // 2 + pad // 2
-        canvas.alpha_composite(shadowed, (PREVIEW_X - pad, py - pad))
+        # 垂直居中：shadowed 比原图大 pad*2，paste 时左上角要减 pad
+        # 让原图（在 shadowed 内偏移 pad）垂直居中于画布
+        py = (H - shadowed.size[1]) // 2  # shadowed 整体居中
+        canvas.alpha_composite(shadowed, (PREVIEW_X - pad, py))
 
     # 4. 文案（右半边黑色区域内垂直居中，白色 Montserrat Bold）
     font, lines = fit_text(title, TEXT_MAX_W, TEXT_MAX_H)
