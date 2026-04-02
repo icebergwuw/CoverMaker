@@ -56,7 +56,7 @@ def cover_crop(img, target_w, target_h):
     new_w = int(src_w * scale)
     new_h = int(src_h * scale)
     img = img.resize((new_w, new_h), Image.LANCZOS)
-    left = 0  # 从左侧开始，不居中裁
+    left = (new_w - target_w) // 2  # 居中裁
     top  = (new_h - target_h) // 2
     return img.crop((left, top, left + target_w, top + target_h))
 
