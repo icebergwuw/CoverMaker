@@ -129,7 +129,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 
     <!-- 按钮 -->
     <button class="btn-main" id="genBtn" onclick="generate()" disabled>生成封面</button>
-    <button class="btn-reveal" id="revealBtn" onclick="revealFile()" disabled>在 Finder 中显示</button>
+    <button class="btn-reveal" id="downloadBtn" onclick="downloadFile()" disabled>下载封面图</button>
 
     <div class="status" id="status">拖入图片开始</div>
   </div>
@@ -152,7 +152,8 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 const COLORS = {{ colors|tojson }};
 let selectedColor = 'teal';
 let selectedFile = null;
-let outputPath = null;
+let outputB64 = null;
+let outputFilename = null;
 let previewTimer = null;
 
 // 生成色块
@@ -260,9 +261,10 @@ function generate() {
     .then(d => {
       btn.disabled = false; btn.textContent = '生成封面';
       if (d.error) { setStatus('失败：' + d.error, 'err'); return; }
-      outputPath = d.output;
-      document.getElementById('revealBtn').disabled = false;
-      setStatus('✓ 已保存：' + d.filename, 'ok');
+      outputB64 = d.preview;
+      outputFilename = d.filename;
+      document.getElementById('downloadBtn').disabled = false;
+      setStatus('✓ 生成完成：' + d.filename, 'ok');
       // 更新预览
       if (d.preview) {
         document.getElementById('placeholder').style.display = 'none';
@@ -277,8 +279,14 @@ function generate() {
     });
 }
 
-function revealFile() {
-  if (outputPath) fetch('/reveal?path=' + encodeURIComponent(outputPath));
+  document.getElementById('revealBtn') && null; // removed
+
+function downloadFile() {
+  if (!outputB64 || !outputFilename) return;
+  const a = document.createElement('a');
+  a.href = 'data:image/png;base64,' + outputB64;
+  a.download = outputFilename;
+  a.click();
 }
 
 function setStatus(msg, cls) {
@@ -318,42 +326,37 @@ def generate():
             file.save(tmp_in.name)
             tmp_in_path = tmp_in.name
 
-        # 输出路径
-        if is_preview:
-            out_path = tempfile.mktemp(suffix=".png")
-        else:
-            base = os.path.splitext(file.filename)[0]
-            dl_dir = os.path.expanduser("~/Downloads")
-            out_path = os.path.join(dl_dir, base + "_cover.png")
+        # 输出到临时文件
+        out_path = tempfile.mktemp(suffix=".png")
+        base = os.path.splitext(file.filename)[0]
+        filename = base + "_cover.png"
 
         make_cover(tmp_in_path, title, color, output_path=out_path)
         os.unlink(tmp_in_path)
 
-        # 生成 base64 预览
+        # 读取文件内容
+        with open(out_path, "rb") as f:
+            full_bytes = f.read()
+
+        # 预览用缩略图
         img = Image.open(out_path)
         img.thumbnail((800, 600), Image.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, "PNG")
-        b64 = base64.b64encode(buf.getvalue()).decode()
+        preview_b64 = base64.b64encode(buf.getvalue()).decode()
+        os.unlink(out_path)
 
         if is_preview:
-            os.unlink(out_path)
-            return jsonify({"preview": b64})
+            return jsonify({"preview": preview_b64})
 
+        # 正式生成：返回全尺寸 base64 供前端下载
+        full_b64 = base64.b64encode(full_bytes).decode()
         return jsonify({
-            "output":   out_path,
-            "filename": os.path.basename(out_path),
-            "preview":  b64,
+            "filename": filename,
+            "preview":  full_b64,  # 直接用全尺寸，前端下载
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route("/reveal")
-def reveal():
-    path = request.args.get("path", "")
-    if os.path.exists(path):
-        os.system(f'open -R "{path}"')
-    return "", 204
 
 def open_browser():
     import time; time.sleep(1)
