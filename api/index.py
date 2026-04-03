@@ -50,13 +50,6 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 .hex-prefix { color: #aaa; font-size: 14px; }
 .hex-row input { width: 90px; }
 
-/* 滑块 */
-.slider-row { display: flex; align-items: center; gap: 10px; }
-.slider-row input[type=range] {
-  flex: 1; accent-color: #4A8FA0; height: 4px; cursor: pointer;
-}
-.slider-val { font-size: 12px; color: #4A8FA0; min-width: 32px; text-align: right; }
-
 .btn-main { background: #4A8FA0; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; transition: background .2s; }
 .btn-main:hover { background: #3a7f90; }
 .btn-main:disabled { background: #3a3a3a; color: #777; cursor: not-allowed; }
@@ -122,20 +115,6 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
           <span class="hex-prefix">#</span>
           <input type="text" id="hexInput" placeholder="3D7A8A" maxlength="6">
           <button class="btn-sm" onclick="applyHex()">应用</button>
-        </div>
-      </div>
-      <div>
-        <label>行距 <span id="lsVal">0.40</span></label>
-        <div class="slider-row">
-          <input type="range" id="lsSlider" min="0.20" max="0.80" step="0.01" value="0.40"
-                 oninput="document.getElementById('lsVal').textContent=parseFloat(this.value).toFixed(2); schedulePreview()">
-        </div>
-      </div>
-      <div>
-        <label>最大字号 <span id="fsVal">65</span>px</label>
-        <div class="slider-row">
-          <input type="range" id="fsSlider" min="20" max="90" step="1" value="65"
-                 oninput="document.getElementById('fsVal').textContent=this.value; schedulePreview()">
         </div>
       </div>
     </div>
@@ -307,8 +286,6 @@ function buildFormData(isPreview) {
   fd.append('title', document.getElementById('titleInput').value.trim());
   fd.append('mode', currentMode);
   fd.append('color', selectedColor);
-  fd.append('line_spacing', document.getElementById('lsSlider').value);
-  fd.append('font_size_max', document.getElementById('fsSlider').value);
   if (isPreview) fd.append('preview', '1');
   return fd;
 }
@@ -370,12 +347,7 @@ def generate():
             make_pdfagile_cover(tmp_in_path, title, output_path=out_path)
             filename = base + "_pdfagile_cover.png"
         else:
-            line_spacing = float(request.form.get("line_spacing", 0.40))
-            font_size_max = request.form.get("font_size_max")
-            font_size_max = int(font_size_max) if font_size_max else None
-            make_cover(tmp_in_path, title, color, output_path=out_path,
-                       line_spacing_ratio=line_spacing,
-                       font_size_max_override=font_size_max)
+            make_cover(tmp_in_path, title, color, output_path=out_path)
             filename = base + "_cover.png"
 
         os.unlink(tmp_in_path)
