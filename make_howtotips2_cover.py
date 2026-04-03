@@ -2,22 +2,22 @@
 """
 make_howtotips2_cover.py — 生成 HowToTips v2 封面
 斜线装饰直接从 Figma SVG 路径数据绘制（aggdraw bezier），精确还原。
-布局尺寸 1200x630（Figma 原稿 380x248 等比放大）。
+输出尺寸 1520x992（Figma 原稿 380x248 × 4，比例完全一致）。
 """
 
 import os
 import aggdraw
 from PIL import Image, ImageDraw, ImageFont
 
-# ── 固定尺寸 ──────────────────────────────────────────────
-W, H = 1200, 630
-
-# Figma 原稿尺寸
+# ── Figma 原稿尺寸 & 放大倍数 ────────────────────────────
 FW, FH = 380, 248
+SCALE  = 4
 
-# 放大比例
-SX = W / FW   # ≈ 3.158
-SY = H / FH   # ≈ 2.540
+# ── 输出尺寸 ─────────────────────────────────────────────
+W, H = FW * SCALE, FH * SCALE   # 1520 x 992
+
+SX = SCALE   # x 方向放大倍数
+SY = SCALE   # y 方向放大倍数（等比，不变形）
 
 # ── SVG 路径数据（来自 Figma，380x248 坐标系）─────────────
 # 粗线（stroke-width 24）和细线（stroke-width 0.5）共用同一形状，略有偏移
@@ -38,21 +38,38 @@ SWIRL_PATH_THIN = (
     "C305.421 185.704 391.522 124.178 352.765 180.691"
 )
 
-# ── 布局参数 ──────────────────────────────────────────────
-IMG_X      = int(542)
-IMG_Y      = int(70)
-IMG_W      = int(620)
-IMG_H      = int(500)
-IMG_BORDER = 12
+# ── 布局参数（Figma 原稿坐标，运行时 × SCALE）────────────
+# 米白框（#F9EFEA）：x=158, y=58, w=210, h=133
+# 图片内容：x=162, y=63, w=201, h=123（内缩4px）
+_IMG_BORDER_X = 158
+_IMG_BORDER_Y = 58
+_IMG_BORDER_W = 210
+_IMG_BORDER_H = 133
 
-TEXT_X        = 66
-TEXT_Y_TOP    = 80
-TEXT_MAX_W    = 440
+_IMG_X = 162
+_IMG_Y = 63
+_IMG_W = 201
+_IMG_H = 123
+
+IMG_BORDER_X = _IMG_BORDER_X * SCALE
+IMG_BORDER_Y = _IMG_BORDER_Y * SCALE
+IMG_BORDER_W = _IMG_BORDER_W * SCALE
+IMG_BORDER_H = _IMG_BORDER_H * SCALE
+
+IMG_X = _IMG_X * SCALE
+IMG_Y = _IMG_Y * SCALE
+IMG_W = _IMG_W * SCALE
+IMG_H = _IMG_H * SCALE
+
+# 文字区域：x从20开始，右边界到158，垂直居中整个画面
+TEXT_X     = 20  * SCALE
+TEXT_Y_TOP = 20  * SCALE
+TEXT_MAX_W = 132 * SCALE   # 158-20-6(margin) = 132
 
 
 
-FONT_SIZE_MAX = 96
-FONT_SIZE_MIN = 20
+FONT_SIZE_MAX = int(H * 0.14)   # ≈138px，与原稿字号比例一致
+FONT_SIZE_MIN = int(H * 0.03)
 FONT_PATH     = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
 
 LINE_SPACING_RATIO = 0.40
@@ -153,11 +170,11 @@ def _wrap(words, font, max_width):
 def fit_text(text, max_width):
     words = text.split()
     wc = len(words)
-    if wc <= 3:   size_max = FONT_SIZE_MAX
-    elif wc <= 4: size_max = 72
-    elif wc <= 6: size_max = 64
-    elif wc <= 8: size_max = 60
-    else:         size_max = 50
+    if wc <= 3:   size_max = int(H * 0.14)
+    elif wc <= 4: size_max = int(H * 0.12)
+    elif wc <= 6: size_max = int(H * 0.10)
+    elif wc <= 8: size_max = int(H * 0.09)
+    else:         size_max = int(H * 0.08)
 
     for size in range(size_max, FONT_SIZE_MIN - 1, -2):
         font = ImageFont.truetype(FONT_PATH, size)
@@ -194,11 +211,13 @@ def make_howtotips2_cover(img_path, title, template=DEFAULT_TEMPLATE, output_pat
     src = Image.open(img_path).convert("RGB")
     photo = cover_crop(src, IMG_W, IMG_H)
 
-    border_rect = Image.new("RGB", (IMG_W + IMG_BORDER*2, IMG_H + IMG_BORDER*2), (249, 239, 234))
-    canvas.paste(border_rect, (IMG_X - IMG_BORDER, IMG_Y - IMG_BORDER))
+    # 米白色外框
+    border_rect = Image.new("RGB", (IMG_BORDER_W, IMG_BORDER_H), (249, 239, 234))
+    canvas.paste(border_rect, (IMG_BORDER_X, IMG_BORDER_Y))
+    canvas.paste(photo, (IMG_X, IMG_Y))
     canvas.paste(photo, (IMG_X, IMG_Y))
 
-    # ── 文字 ─────────────────────────────────────────────
+    # ── 文字（垂直居中于整个画面）──────────────────────
     draw = ImageDraw.Draw(canvas)
 
     font, lines = fit_text(title, TEXT_MAX_W)
@@ -207,8 +226,7 @@ def make_howtotips2_cover(img_path, title, template=DEFAULT_TEMPLATE, output_pat
     line_h       = sample_bbox[3] - sample_bbox[1]
     top_offset   = sample_bbox[1]
     total_text_h = line_h * len(lines) + line_spacing * (len(lines) - 1)
-    text_area_h  = IMG_Y + IMG_H - TEXT_Y_TOP
-    y = TEXT_Y_TOP + (text_area_h - total_text_h) // 2 - top_offset
+    y = (H - total_text_h) // 2 - top_offset
 
     for line in lines:
         draw.text((TEXT_X, y), line, font=font, fill=text_rgb)
