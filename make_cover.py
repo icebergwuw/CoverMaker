@@ -126,8 +126,20 @@ def make_cover(img_path, title, color_key="teal", output_path=None):
 
     # ── 右侧标题文字（先算坐标，再画线）─────────────────
     text_area_w = RIGHT_W - TEXT_MARGIN * 2
+
+    # 根据字数动态压低最大字号：字越少上限越小，避免短文字撑满版面
+    word_count = len(title.split())
+    if word_count <= 4:
+        dynamic_max = 44
+    elif word_count <= 6:
+        dynamic_max = 52
+    elif word_count <= 9:
+        dynamic_max = 58
+    else:
+        dynamic_max = FONT_SIZE_MAX
+
     font, lines = fit_text(draw, title, text_area_w, FONT_PATH,
-                           FONT_SIZE_MAX, FONT_SIZE_MIN)
+                           dynamic_max, FONT_SIZE_MIN)
 
     line_spacing = int(font.size * 0.32)
     sample_bbox = draw.textbbox((0, 0), lines[0], font=font)
