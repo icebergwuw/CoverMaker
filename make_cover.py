@@ -141,7 +141,7 @@ def make_cover(img_path, title, color_key="teal", output_path=None):
     font, lines = fit_text(draw, title, text_area_w, FONT_PATH,
                            dynamic_max, FONT_SIZE_MIN)
 
-    line_spacing = int(font.size * 0.32)
+    line_spacing = int(font.size * 0.35)
     sample_bbox = draw.textbbox((0, 0), lines[0], font=font)
     line_h = sample_bbox[3] - sample_bbox[1]
     top_offset = sample_bbox[1]

@@ -84,8 +84,8 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
     <div>
       <label>模式</label>
       <div class="mode-tabs">
-        <button class="mode-tab active" onclick="switchMode('tutorial', this)">教程封面</button>
-        <button class="mode-tab" onclick="switchMode('pdfagile', this)">PDF Agile</button>
+        <button class="mode-tab active" onclick="switchMode('tutorial', this)">HowToTips</button>
+        <button class="mode-tab" onclick="switchMode('pdfagile', this)">Templates</button>
       </div>
     </div>
 
