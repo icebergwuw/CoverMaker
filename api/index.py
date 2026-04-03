@@ -8,6 +8,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from make_cover import make_cover, PRESETS
 from make_pdfagile_cover import make_pdfagile_cover
+from make_howtotips2_cover import make_howtotips2_cover
 
 app = Flask(__name__)
 
@@ -86,6 +87,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="switchMode('tutorial', this)">HowToTips</button>
         <button class="mode-tab" onclick="switchMode('pdfagile', this)">Templates</button>
+        <button class="mode-tab" onclick="switchMode('howtotips2', this)">HowToTips 2</button>
       </div>
     </div>
 
@@ -126,6 +128,23 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
       </div>
     </div>
 
+    <!-- HowToTips 2 专属：暖黄背景色选择 -->
+    <div class="section" id="section-howtotips2">
+      <div>
+        <label>背景颜色</label>
+        <div class="color-grid" id="colorGrid2"></div>
+        <div style="margin-top:8px; font-size:12px; color:#666" id="colorLabel2">#ffbe4c</div>
+      </div>
+      <div>
+        <label>自定义颜色</label>
+        <div class="hex-row">
+          <span class="hex-prefix">#</span>
+          <input type="text" id="hexInput2" placeholder="ffbe4c" maxlength="6">
+          <button class="btn-sm" onclick="applyHex2()">应用</button>
+        </div>
+      </div>
+    </div>
+
     <button class="btn-main" id="genBtn" onclick="generate()" disabled>生成封面</button>
     <button class="btn-dl" id="downloadBtn" onclick="downloadFile()" disabled>下载封面图</button>
     <div class="status" id="status">拖入图片开始</div>
@@ -145,6 +164,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 
 <script>
 const COLORS = {{ colors|tojson }};
+const COLORS2 = {{ colors2|tojson }};
 let selectedColor = 'teal';
 let selectedFile = null;
 let outputB64 = null;
@@ -152,7 +172,7 @@ let outputFilename = null;
 let previewTimer = null;
 let currentMode = 'tutorial';
 
-// 色块
+// 色块 (HowToTips)
 const grid = document.getElementById('colorGrid');
 COLORS.forEach(([label, key, hex]) => {
   const s = document.createElement('div');
@@ -162,6 +182,36 @@ COLORS.forEach(([label, key, hex]) => {
   s.onclick = () => selectColor(key, label, hex, s);
   grid.appendChild(s);
 });
+
+// 色块 (HowToTips 2)
+let selectedColor2 = '#ffbe4c';
+const grid2 = document.getElementById('colorGrid2');
+COLORS2.forEach(([label, hex]) => {
+  const s = document.createElement('div');
+  s.className = 'color-swatch' + (hex === '#ffbe4c' ? ' active' : '');
+  s.style.background = hex;
+  s.title = label;
+  s.onclick = () => selectColor2(hex, label, s);
+  grid2.appendChild(s);
+});
+
+function selectColor2(hex, label, el) {
+  selectedColor2 = hex;
+  document.querySelectorAll('#colorGrid2 .color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('colorLabel2').textContent = hex;
+  schedulePreview();
+}
+
+function applyHex2() {
+  const val = document.getElementById('hexInput2').value.trim().replace('#','');
+  if (/^[0-9a-fA-F]{6}$/.test(val)) {
+    selectedColor2 = '#' + val;
+    document.querySelectorAll('#colorGrid2 .color-swatch').forEach(s => s.classList.remove('active'));
+    document.getElementById('colorLabel2').textContent = '#' + val;
+    schedulePreview();
+  }
+}
 
 function selectColor(key, label, hex, el) {
   selectedColor = key;
@@ -285,7 +335,7 @@ function buildFormData(isPreview) {
   fd.append('image', selectedFile);
   fd.append('title', document.getElementById('titleInput').value.trim());
   fd.append('mode', currentMode);
-  fd.append('color', selectedColor);
+  fd.append('color', currentMode === 'howtotips2' ? selectedColor2 : selectedColor);
   if (isPreview) fd.append('preview', '1');
   return fd;
 }
@@ -324,7 +374,11 @@ def index():
         ("Olive 橄榄", "olive"), ("Rose 玫瑰", "rose"),
         ("Slate 石板", "slate"), ("Warm 暖棕", "warm"),
     ]]
-    return render_template_string(HTML, colors=colors)
+    colors2 = [
+        ("暖橙黄", "#ffbe4c"), ("浅金黄", "#ffd272"), ("深橙", "#f5a623"),
+        ("奶黄", "#ffe08a"), ("中黄", "#ffcf6b"),
+    ]
+    return render_template_string(HTML, colors=colors, colors2=colors2)
 
 @app.route("/generate", methods=["POST"])
 def generate():
@@ -346,6 +400,9 @@ def generate():
         if mode == "pdfagile":
             make_pdfagile_cover(tmp_in_path, title, output_path=out_path)
             filename = base + "_pdfagile_cover.png"
+        elif mode == "howtotips2":
+            make_howtotips2_cover(tmp_in_path, title, color, output_path=out_path)
+            filename = base + "_ht2_cover.png"
         else:
             make_cover(tmp_in_path, title, color, output_path=out_path)
             filename = base + "_cover.png"
