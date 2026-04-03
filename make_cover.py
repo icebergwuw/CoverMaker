@@ -107,7 +107,7 @@ def fit_text(draw, text, max_width, font_path, size_max, size_min):
     font = ImageFont.truetype(font_path, size_min)
     return font, _wrap(words, font, max_width)
 
-def make_cover(img_path, title, color_key="teal", output_path=None):
+def make_cover(img_path, title, color_key="teal", output_path=None, line_spacing_ratio=0.40, font_size_max_override=None):
     # 解析颜色
     if color_key.startswith("#"):
         bg_color = hex_to_rgb(color_key)
@@ -138,10 +138,12 @@ def make_cover(img_path, title, color_key="teal", output_path=None):
     else:
         dynamic_max = 42
 
+    if font_size_max_override is not None:
+        dynamic_max = int(font_size_max_override)
     font, lines = fit_text(draw, title, text_area_w, FONT_PATH,
                            dynamic_max, FONT_SIZE_MIN)
 
-    line_spacing = int(font.size * 0.35)
+    line_spacing = int(font.size * line_spacing_ratio)
     sample_bbox = draw.textbbox((0, 0), lines[0], font=font)
     line_h = sample_bbox[3] - sample_bbox[1]
     top_offset = sample_bbox[1]
