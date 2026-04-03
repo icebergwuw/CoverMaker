@@ -13,13 +13,13 @@ FONT_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "
 W, H = 1200, 630
 
 # Figma 实测坐标（1x）
-PREVIEW_MAX_W, PREVIEW_MAX_H = 560, 400 # 预览图最大尺寸（更大）
+PREVIEW_MAX_W, PREVIEW_MAX_H = 616, 440 # 预览图最大尺寸（+10%）
 PREVIEW_Y                  = 108         # 预览图垂直起点（已被居中逻辑覆盖）
 PREVIEW_AREA_W             = 600         # 左半区域宽度（黑块起始x）
 PREVIEW_ROTATE             = 0.0        # 不旋转
 
 # 文案区：右半边黑色区域内
-TEXT_X                     = 713
+TEXT_X                     = 733
 TEXT_PADDING_R             = 50
 TEXT_MAX_W                 = W - TEXT_X - TEXT_PADDING_R  # 465
 TEXT_MAX_H                 = 280
@@ -29,8 +29,8 @@ LOGO_W, LOGO_H             = 218, 50
 
 BLACK_X, BLACK_Y, BLACK_S  = 600, -168, 1009
 
-FONT_SIZE_MAX = 48
-FONT_SIZE_MIN = 20
+FONT_SIZE_MAX = 53
+FONT_SIZE_MIN = 22
 
 
 def _wrap(text, font, max_w):
@@ -133,7 +133,7 @@ def make_pdfagile_cover(preview_path, title, output_path=None):
     sb = draw.textbbox((0, 0), lines[0], font=font)
     lh = sb[3] - sb[1]
     top_off = sb[1]
-    sp = int(font.size * 0.32)
+    sp = int(font.size * 0.387)  # 行距+10%
     total_h = lh * len(lines) + sp * (len(lines) - 1)
     # 垂直居中于画布（黑底覆盖整个右侧高度）
     y = (H - total_h) // 2 - top_off + 12
