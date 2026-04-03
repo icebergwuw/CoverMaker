@@ -18,7 +18,7 @@ PREVIEW_X, PREVIEW_Y       = 55, 108    # 预览图左上角
 PREVIEW_ROTATE             = 0.0        # 不旋转
 
 # 文案区：右半边黑色区域内
-TEXT_X                     = 710
+TEXT_X                     = 713
 TEXT_PADDING_R             = 50
 TEXT_MAX_W                 = W - TEXT_X - TEXT_PADDING_R  # 465
 TEXT_MAX_H                 = 280
@@ -134,7 +134,7 @@ def make_pdfagile_cover(preview_path, title, output_path=None):
     sp = int(font.size * 0.32)
     total_h = lh * len(lines) + sp * (len(lines) - 1)
     # 垂直居中于画布（黑底覆盖整个右侧高度）
-    y = (H - total_h) // 2 - top_off
+    y = (H - total_h) // 2 - top_off + 12
     for line in lines:
         draw.text((TEXT_X, y), line, font=font, fill=(255, 255, 255, 255))
         y += lh + sp
