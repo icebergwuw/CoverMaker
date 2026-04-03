@@ -30,8 +30,8 @@ LINE_H    = 80   # 白线高度(px)
 LINE_GAP  = 28   # 线与文字块的间距(px)
 
 TEXT_MARGIN    = 40     # 文字距右侧边缘内边距
-FONT_SIZE_MAX  = 72
-FONT_SIZE_MIN  = 28
+FONT_SIZE_MAX  = 65
+FONT_SIZE_MIN  = 25
 FONT_PATH      = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
 
 # ── 颜色预设 ─────────────────────────────────────────────
@@ -129,7 +129,7 @@ def make_cover(img_path, title, color_key="teal", output_path=None):
     font, lines = fit_text(draw, title, text_area_w, FONT_PATH,
                            FONT_SIZE_MAX, FONT_SIZE_MIN)
 
-    line_spacing = int(font.size * 0.18)
+    line_spacing = int(font.size * 0.32)
     sample_bbox = draw.textbbox((0, 0), lines[0], font=font)
     line_h = sample_bbox[3] - sample_bbox[1]
     top_offset = sample_bbox[1]
