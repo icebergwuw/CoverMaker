@@ -147,22 +147,26 @@ def make_cover(img_path, title, color_key="teal", output_path=None):
     top_offset = sample_bbox[1]
     total_text_h = line_h * len(lines) + line_spacing * (len(lines) - 1)
 
-    # 整体内容块 = 上线 + gap + 文字 + gap + 下线，垂直居中
+    # 整体内容块 = 文字块，垂直居中
     LINE_GAP  = 30   # 线与文字之间的间距
-    total_block_h = LINE_H + LINE_GAP + total_text_h + LINE_GAP + LINE_H
-    block_top = (TOTAL_H - total_block_h) // 2
+    block_top = (TOTAL_H - total_text_h) // 2
 
     # 竖线位置
     line_x = LEFT_W + (RIGHT_W - LINE_W) // 2
-    top_line_y = block_top
-    bot_line_y = block_top + LINE_H + LINE_GAP + total_text_h + LINE_GAP
-    draw.rectangle([line_x, top_line_y, line_x + LINE_W, top_line_y + LINE_H],
+    top_line_top = 0
+    top_line_bot = block_top - LINE_GAP
+    bot_line_top = block_top + total_text_h + LINE_GAP
+    bot_line_bot = TOTAL_H
+
+    # 上线：从顶部到文字上方
+    draw.rectangle([line_x, top_line_top, line_x + LINE_W, top_line_bot],
                    fill=(255, 255, 255))
-    draw.rectangle([line_x, bot_line_y, line_x + LINE_W, bot_line_y + LINE_H],
+    # 下线：从文字下方到底部
+    draw.rectangle([line_x, bot_line_top, line_x + LINE_W, bot_line_bot],
                    fill=(255, 255, 255))
 
-    # 文字起始 y（在上线底部 + gap 处），补偿 top_offset
-    y = top_line_y + LINE_H + LINE_GAP - top_offset
+    # 文字起始 y（垂直居中，补偿 top_offset）
+    y = block_top - top_offset
 
     # ── 渲染文字 ─────────────────────────────────────────
     for line in lines:
