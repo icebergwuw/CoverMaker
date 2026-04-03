@@ -87,7 +87,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="switchMode('tutorial', this)">HowToTips</button>
         <button class="mode-tab" onclick="switchMode('pdfagile', this)">Templates</button>
-        <button class="mode-tab" onclick="switchMode('howtotips2', this)">HowToTips 2</button>
+        <button class="mode-tab" onclick="switchMode('howtotips2', this)">Blog</button>
       </div>
     </div>
 
@@ -128,20 +128,12 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
       </div>
     </div>
 
-    <!-- HowToTips 2 专属：暖黄背景色选择 -->
+    <!-- HowToTips 2 专属：模板选择 -->
     <div class="section" id="section-howtotips2">
       <div>
-        <label>背景颜色</label>
+        <label>颜色模板</label>
         <div class="color-grid" id="colorGrid2"></div>
-        <div style="margin-top:8px; font-size:12px; color:#666" id="colorLabel2">#ffbe4c</div>
-      </div>
-      <div>
-        <label>自定义颜色</label>
-        <div class="hex-row">
-          <span class="hex-prefix">#</span>
-          <input type="text" id="hexInput2" placeholder="ffbe4c" maxlength="6">
-          <button class="btn-sm" onclick="applyHex2()">应用</button>
-        </div>
+        <div style="margin-top:8px; font-size:12px; color:#666" id="colorLabel2">青绿</div>
       </div>
     </div>
 
@@ -183,34 +175,24 @@ COLORS.forEach(([label, key, hex]) => {
   grid.appendChild(s);
 });
 
-// 色块 (HowToTips 2)
-let selectedColor2 = '#ffbe4c';
+// 色块 (HowToTips 2) — 模板选择
+let selectedTemplate2 = 'teal';
 const grid2 = document.getElementById('colorGrid2');
-COLORS2.forEach(([label, hex]) => {
+COLORS2.forEach(([label, key, bgHex]) => {
   const s = document.createElement('div');
-  s.className = 'color-swatch' + (hex === '#ffbe4c' ? ' active' : '');
-  s.style.background = hex;
+  s.className = 'color-swatch' + (key === 'teal' ? ' active' : '');
+  s.style.background = bgHex;
   s.title = label;
-  s.onclick = () => selectColor2(hex, label, s);
+  s.onclick = () => selectTemplate2(key, label, s);
   grid2.appendChild(s);
 });
 
-function selectColor2(hex, label, el) {
-  selectedColor2 = hex;
+function selectTemplate2(key, label, el) {
+  selectedTemplate2 = key;
   document.querySelectorAll('#colorGrid2 .color-swatch').forEach(s => s.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('colorLabel2').textContent = hex;
+  document.getElementById('colorLabel2').textContent = label;
   schedulePreview();
-}
-
-function applyHex2() {
-  const val = document.getElementById('hexInput2').value.trim().replace('#','');
-  if (/^[0-9a-fA-F]{6}$/.test(val)) {
-    selectedColor2 = '#' + val;
-    document.querySelectorAll('#colorGrid2 .color-swatch').forEach(s => s.classList.remove('active'));
-    document.getElementById('colorLabel2').textContent = '#' + val;
-    schedulePreview();
-  }
 }
 
 function selectColor(key, label, hex, el) {
@@ -335,7 +317,8 @@ function buildFormData(isPreview) {
   fd.append('image', selectedFile);
   fd.append('title', document.getElementById('titleInput').value.trim());
   fd.append('mode', currentMode);
-  fd.append('color', currentMode === 'howtotips2' ? selectedColor2 : selectedColor);
+  fd.append('color', selectedColor);
+  fd.append('template', selectedTemplate2);
   if (isPreview) fd.append('preview', '1');
   return fd;
 }
@@ -375,8 +358,11 @@ def index():
         ("Slate 石板", "slate"), ("Warm 暖棕", "warm"),
     ]]
     colors2 = [
-        ("暖橙黄", "#ffbe4c"), ("浅金黄", "#ffd272"), ("深橙", "#f5a623"),
-        ("奶黄", "#ffe08a"), ("中黄", "#ffcf6b"),
+        ("青绿", "teal",   "#84DCD4"),
+        ("粉色", "pink",   "#FFC0E5"),
+        ("橙黄", "orange", "#FFD272"),
+        ("薄荷", "mint",   "#D5FFEC"),
+        ("暖黄", "warm",   "#FFBE4C"),
     ]
     return render_template_string(HTML, colors=colors, colors2=colors2)
 
@@ -387,6 +373,7 @@ def generate():
         title      = request.form["title"]
         mode       = request.form.get("mode", "tutorial")
         color      = request.form.get("color", "teal")
+        template   = request.form.get("template", "pink")
         is_preview = request.form.get("preview") == "1"
 
         suffix = os.path.splitext(file.filename)[1] or ".png"
@@ -394,14 +381,15 @@ def generate():
             file.save(tmp_in.name)
             tmp_in_path = tmp_in.name
 
-        out_path = tempfile.mktemp(suffix=".png")
+        out_fd, out_path = tempfile.mkstemp(suffix=".png")
+        os.close(out_fd)
         base = os.path.splitext(file.filename)[0]
 
         if mode == "pdfagile":
             make_pdfagile_cover(tmp_in_path, title, output_path=out_path)
             filename = base + "_pdfagile_cover.png"
         elif mode == "howtotips2":
-            make_howtotips2_cover(tmp_in_path, title, color, output_path=out_path)
+            make_howtotips2_cover(tmp_in_path, title, template, output_path=out_path)
             filename = base + "_ht2_cover.png"
         else:
             make_cover(tmp_in_path, title, color, output_path=out_path)
