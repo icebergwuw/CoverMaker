@@ -30,8 +30,8 @@ LINE_H    = 80   # 白线高度(px)
 LINE_GAP  = 28   # 线与文字块的间距(px)
 
 TEXT_MARGIN    = 40     # 文字距右侧边缘内边距
-FONT_SIZE_MAX  = 65
-FONT_SIZE_MIN  = 25
+FONT_SIZE_MAX  = 96
+FONT_SIZE_MIN  = 20
 FONT_PATH      = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
 
 # ── 颜色预设 ─────────────────────────────────────────────
@@ -127,16 +127,18 @@ def make_cover(img_path, title, color_key="teal", output_path=None, line_spacing
     # ── 右侧标题文字（先算坐标，再画线）─────────────────
     text_area_w = RIGHT_W - TEXT_MARGIN * 2
 
-    # 根据字数动态调整最大字号：字越多上限越小，避免长文字超出版面
+    # 根据字数动态调整最大字号，对齐 Figma 设计规范
     word_count = len(title.split())
-    if word_count <= 4:
-        dynamic_max = FONT_SIZE_MAX       # 65，字少可以大
+    if word_count <= 3:
+        dynamic_max = FONT_SIZE_MAX        # 96px
+    elif word_count <= 4:
+        dynamic_max = 72
     elif word_count <= 6:
-        dynamic_max = 58
-    elif word_count <= 9:
-        dynamic_max = 50
+        dynamic_max = 64
+    elif word_count <= 8:
+        dynamic_max = 60
     else:
-        dynamic_max = 42
+        dynamic_max = 50
 
     font, lines = fit_text(draw, title, text_area_w, FONT_PATH,
                            dynamic_max, FONT_SIZE_MIN)
