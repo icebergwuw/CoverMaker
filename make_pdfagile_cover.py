@@ -14,7 +14,8 @@ W, H = 1200, 630
 
 # Figma 实测坐标（1x）
 PREVIEW_MAX_W, PREVIEW_MAX_H = 560, 400 # 预览图最大尺寸（更大）
-PREVIEW_X, PREVIEW_Y       = 55, 108    # 预览图左上角
+PREVIEW_Y                  = 108         # 预览图垂直起点（已被居中逻辑覆盖）
+PREVIEW_AREA_W             = 600         # 左半区域宽度（黑块起始x）
 PREVIEW_ROTATE             = 0.0        # 不旋转
 
 # 文案区：右半边黑色区域内
@@ -123,8 +124,9 @@ def make_pdfagile_cover(preview_path, title, output_path=None):
 
         # 垂直居中：shadowed 比原图大 pad*2，paste 时左上角要减 pad
         # 让原图（在 shadowed 内偏移 pad）垂直居中于画布
-        py = (H - shadowed.size[1]) // 2  # shadowed 整体居中
-        canvas.alpha_composite(shadowed, (PREVIEW_X - pad, py))
+        py = (H - shadowed.size[1]) // 2  # 垂直居中
+        px = (PREVIEW_AREA_W - nw) // 2 - pad + 50  # 在左半区域水平居中，偏右50px
+        canvas.alpha_composite(shadowed, (px, py))
 
     # 4. 文案（右半边黑色区域内垂直居中，白色 Montserrat Bold）
     font, lines = fit_text(title, TEXT_MAX_W, TEXT_MAX_H)
