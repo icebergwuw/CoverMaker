@@ -59,7 +59,7 @@ def fit_text(text, max_w, max_h):
             continue
         sb = dummy.textbbox((0, 0), lines[0], font=font)
         lh = sb[3] - sb[1]
-        sp = int(size * 0.2)
+        sp = int(size * 0.3)
         total_h = lh * len(lines) + sp * (len(lines) - 1)
         if total_h <= max_h:
             return font, lines
@@ -131,7 +131,7 @@ def make_pdfagile_cover(preview_path, title, output_path=None):
     sb = draw.textbbox((0, 0), lines[0], font=font)
     lh = sb[3] - sb[1]
     top_off = sb[1]
-    sp = int(font.size * 0.22)
+    sp = int(font.size * 0.32)
     total_h = lh * len(lines) + sp * (len(lines) - 1)
     # 垂直居中于画布（黑底覆盖整个右侧高度）
     y = (H - total_h) // 2 - top_off
