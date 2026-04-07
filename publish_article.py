@@ -130,7 +130,7 @@ def publish_article(
     cover_image_path: str,
     sub_title: str        = "",
     read_time: int        = 5,
-    heat: int             = 50,
+    heat: int             = 99,
     category: int         = CATEGORY_HOW_TO_TIPS,
     box: int              = BOX_PDF_CONVERTER,
     banners: list         = None,
@@ -174,16 +174,19 @@ def publish_article(
                 "metaTitle":       seo_title       or f"{title} | PDF Agile",
                 "metaDescription": seo_description or sub_title or "",
                 "keywords":        seo_keywords    or "",
+                "metaImage":       image_id,
                 "metaSocial": [
                     {
                         "socialNetwork": "other",
                         "title":       seo_title       or f"{title} | PDF Agile",
                         "description": seo_description or sub_title or "",
+                        "image":       image_id,
                     },
                     {
                         "socialNetwork": "twitter",
                         "title":       seo_title       or f"{title} | PDF Agile",
                         "description": seo_description or sub_title or "",
+                        "image":       image_id,
                     },
                 ],
             }
@@ -386,7 +389,7 @@ if __name__ == "__main__":
         content            = CONTENT,
         cover_image_path   = cover_path,
         read_time          = READ_TIME,
-        heat               = 50,
+        heat               = 99,
         banners            = [BANNER_TOP_LIST],
         tags               = [TAG_MANAGE_PDF],
         related_keywords   = ["PDF", "convert", "edit"],
