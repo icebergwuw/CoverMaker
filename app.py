@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cover Maker Web GUI — python3 app.py 启动，浏览器自动打开"""
 
-import os, sys, io, base64, threading, webbrowser, tempfile
+import os, sys, io, base64, threading, webbrowser, tempfile, json
 from flask import Flask, request, jsonify, render_template_string
 from PIL import Image
 
@@ -416,6 +416,295 @@ def generate():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+AUTO_PUBLISH_HTML = """<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Auto Publish</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a1a; color: #f0f0f0; font-family: -apple-system, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 48px 24px; }
+.card { background: #242424; border-radius: 14px; padding: 36px 40px; width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 24px; }
+h1 { font-size: 22px; color: #4A8FA0; font-weight: 700; }
+.subtitle { font-size: 13px; color: #666; }
+label { font-size: 13px; color: #aaa; display: block; margin-bottom: 6px; }
+input[type=text], select {
+  width: 100%; background: #2d2d2d; border: 1px solid #3a3a3a; border-radius: 8px;
+  color: #f0f0f0; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s;
+}
+input[type=text]:focus, select:focus { border-color: #4A8FA0; }
+select option { background: #2d2d2d; }
+.btn-main {
+  background: #4A8FA0; color: #fff; border: none; border-radius: 10px;
+  padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer;
+  width: 100%; transition: background .2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-main:hover { background: #3a7f90; }
+.btn-main:disabled { background: #2d2d2d; color: #555; cursor: not-allowed; }
+
+/* 进度日志 */
+.log-box {
+  background: #111; border-radius: 8px; padding: 16px; font-size: 12px;
+  font-family: 'SF Mono', monospace; line-height: 1.8; min-height: 60px;
+  max-height: 320px; overflow-y: auto; color: #666; display: none;
+}
+.log-box.show { display: block; }
+.log-line { color: #888; }
+.log-line.done  { color: #5cb85c; }
+.log-line.error { color: #e05555; }
+.log-line.active { color: #4A8FA0; }
+
+/* 结果卡片 */
+.result-card {
+  background: #1a1a1a; border: 1px solid #2d2d2d; border-radius: 10px;
+  padding: 20px 24px; display: none; flex-direction: column; gap: 12px;
+}
+.result-card.show { display: flex; }
+.result-title { font-size: 15px; font-weight: 600; color: #f0f0f0; }
+.result-url a { font-size: 13px; color: #4A8FA0; word-break: break-all; text-decoration: none; }
+.result-url a:hover { text-decoration: underline; }
+.badge { display: inline-block; background: #4A8FA0; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+
+/* 步骤指示器 */
+.steps { display: flex; gap: 0; align-items: center; }
+.step { flex: 1; text-align: center; font-size: 11px; color: #444; position: relative; padding-bottom: 20px; }
+.step::after { content: ''; position: absolute; bottom: 8px; left: 50%; right: -50%; height: 2px; background: #2d2d2d; z-index: 0; }
+.step:last-child::after { display: none; }
+.step .dot { width: 28px; height: 28px; border-radius: 50%; background: #2d2d2d; border: 2px solid #3a3a3a; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; font-size: 11px; font-weight: 700; position: relative; z-index: 1; }
+.step.active .dot { border-color: #4A8FA0; color: #4A8FA0; }
+.step.active { color: #4A8FA0; }
+.step.done .dot { background: #4A8FA0; border-color: #4A8FA0; color: #fff; }
+.step.done { color: #5cb85c; }
+.step.error .dot { background: #e05555; border-color: #e05555; color: #fff; }
+
+/* 链接回 Cover Maker */
+.back-link { font-size: 13px; color: #555; text-decoration: none; align-self: flex-start; }
+.back-link:hover { color: #aaa; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.pulsing { animation: pulse 1.2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div>
+    <h1>Auto Publish</h1>
+    <div class="subtitle" style="margin-top:6px">自动抓热点 → AI写文 → 生成封面 → 发布 CMS</div>
+  </div>
+
+  <a class="back-link" href="/">← 返回 Cover Maker</a>
+
+  <!-- 步骤 -->
+  <div class="steps">
+    <div class="step" id="step-trends"><div class="dot">1</div>抓热点</div>
+    <div class="step" id="step-plan"><div class="dot">2</div>AI规划</div>
+    <div class="step" id="step-content"><div class="dot">3</div>写正文</div>
+    <div class="step" id="step-cover"><div class="dot">4</div>生封面</div>
+    <div class="step" id="step-publish"><div class="dot">5</div>发布</div>
+  </div>
+
+  <!-- 参数 -->
+  <div>
+    <label>话题关键词</label>
+    <input type="text" id="topicInput" value="PDF tools alternatives 2026" placeholder="PDF tools alternatives 2026">
+  </div>
+  <div>
+    <label>封面配色</label>
+    <select id="templateSelect">
+      <option value="mint">薄荷绿 mint</option>
+      <option value="teal">青绿 teal</option>
+      <option value="pink">粉色 pink</option>
+      <option value="orange">橙黄 orange</option>
+      <option value="warm">暖黄 warm</option>
+    </select>
+  </div>
+
+  <button class="btn-main" id="runBtn" onclick="startPipeline()">
+    <span id="btnIcon">🚀</span>
+    <span id="btnText">开始自动发布</span>
+  </button>
+
+  <!-- 日志 -->
+  <div class="log-box" id="logBox"></div>
+
+  <!-- 结果 -->
+  <div class="result-card" id="resultCard">
+    <div><span class="badge">已发布</span></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-url"><a id="resultUrl" href="#" target="_blank"></a></div>
+  </div>
+</div>
+
+<script>
+const STEP_MAP = {
+  trends:      'step-trends',
+  trends_done: 'step-trends',
+  plan:        'step-plan',
+  plan_done:   'step-plan',
+  content:     'step-content',
+  content_done:'step-content',
+  cover:       'step-cover',
+  cover_done:  'step-cover',
+  publish:     'step-publish',
+  done:        'step-publish',
+};
+
+function setStep(step, status) {
+  const id = STEP_MAP[step];
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('active','done','error');
+  if (status === 'active') el.classList.add('active');
+  else if (status === 'done') el.classList.add('done');
+  else if (status === 'error') el.classList.add('error');
+}
+
+function addLog(step, detail, cls='active') {
+  const box = document.getElementById('logBox');
+  box.classList.add('show');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  const icons = {trends:'🔍',trends_done:'✓',plan:'🧠',plan_done:'✓',content:'✍️',content_done:'✓',cover:'🎨',cover_done:'✓',publish:'📤',done:'✅',error:'❌'};
+  line.textContent = (icons[step]||'·') + ' ' + (detail || step);
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function startPipeline() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('btnIcon').textContent = '⏳';
+  document.getElementById('btnText').textContent = '处理中...';
+  document.getElementById('btnText').classList.add('pulsing');
+  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('logBox').innerHTML = '';
+
+  // 重置步骤
+  ['step-trends','step-plan','step-content','step-cover','step-publish']
+    .forEach(id => { const el = document.getElementById(id); el.classList.remove('active','done','error'); });
+
+  const topic    = document.getElementById('topicInput').value.trim() || 'PDF tools alternatives 2026';
+  const template = document.getElementById('templateSelect').value;
+
+  // SSE 连接
+  const url = `/api/auto-publish/run?topic=${encodeURIComponent(topic)}&template=${encodeURIComponent(template)}`;
+  const es  = new EventSource(url);
+
+  es.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    const { step, detail, status } = d;
+
+    if (status === 'done') {
+      // 标记该步骤完成
+      setStep(step, 'done');
+      addLog(step, detail, 'done');
+    } else if (status === 'error') {
+      setStep(step, 'error');
+      addLog(step, detail, 'error');
+      btn.disabled = false;
+      document.getElementById('btnIcon').textContent = '🚀';
+      document.getElementById('btnText').textContent = '重新开始';
+      document.getElementById('btnText').classList.remove('pulsing');
+      es.close();
+    } else if (status === 'active') {
+      setStep(step, 'active');
+      addLog(step, detail, 'active');
+    } else if (step === 'result') {
+      // 最终结果
+      const result = JSON.parse(detail);
+      document.getElementById('resultTitle').textContent = result.title;
+      const urlEl = document.getElementById('resultUrl');
+      urlEl.href = result.url;
+      urlEl.textContent = result.url;
+      document.getElementById('resultCard').classList.add('show');
+      btn.disabled = false;
+      document.getElementById('btnIcon').textContent = '🚀';
+      document.getElementById('btnText').textContent = '再发一篇';
+      document.getElementById('btnText').classList.remove('pulsing');
+      es.close();
+    }
+  };
+
+  es.onerror = () => {
+    addLog('error', '连接中断', 'error');
+    btn.disabled = false;
+    document.getElementById('btnIcon').textContent = '🚀';
+    document.getElementById('btnText').textContent = '重新开始';
+    document.getElementById('btnText').classList.remove('pulsing');
+    es.close();
+  };
+}
+</script>
+</body>
+</html>
+"""
+
+import queue
+from flask import Response, stream_with_context
+
+@app.route("/auto-publish")
+def auto_publish_page():
+    return auto_publish_page_html()
+
+def auto_publish_page_html():
+    from flask import make_response
+    resp = make_response(AUTO_PUBLISH_HTML)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return resp
+
+@app.route("/api/auto-publish/run")
+def auto_publish_run():
+    topic    = request.args.get("topic", "PDF tools alternatives 2026")
+    template = request.args.get("template", "mint")
+
+    def generate():
+        q = queue.Queue()
+
+        def progress_cb(step, detail=""):
+            # 判断是否是完成事件
+            if step.endswith("_done") or step == "done":
+                q.put({"step": step, "detail": detail, "status": "done"})
+            else:
+                q.put({"step": step, "detail": detail, "status": "active"})
+
+        import threading
+        from auto_publish import run_pipeline
+
+        result_holder = {}
+        error_holder  = {}
+
+        def worker():
+            try:
+                result = run_pipeline(topic=topic, template=template, progress_cb=progress_cb)
+                result_holder["data"] = result
+            except Exception as e:
+                error_holder["msg"] = str(e)
+            finally:
+                q.put(None)  # sentinel
+
+        threading.Thread(target=worker, daemon=True).start()
+
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+
+        if error_holder:
+            yield f"data: {json.dumps({'step':'error','detail':error_holder['msg'],'status':'error'}, ensure_ascii=False)}\n\n"
+        elif result_holder:
+            yield f"data: {json.dumps({'step':'result','detail':json.dumps(result_holder['data'], ensure_ascii=False),'status':'result'}, ensure_ascii=False)}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
 def open_browser():
     import time; time.sleep(1)
     webbrowser.open("http://127.0.0.1:5299")
@@ -425,4 +714,5 @@ if __name__ == "__main__":
     if port == 5299:
         threading.Thread(target=open_browser, daemon=True).start()
         print("Cover Maker 启动中 → http://127.0.0.1:5299")
+        print("Auto Publish  → http://127.0.0.1:5299/auto-publish")
     app.run(host="0.0.0.0", port=port, debug=False)
