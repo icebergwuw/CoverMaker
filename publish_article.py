@@ -1,24 +1,46 @@
 #!/usr/bin/env python3
 """
 PDF Agile CMS 文章自动发布工具
+=====================================
 
-用法：
-  python3 publish_article.py
+【快速使用】
+  1. 修改文件底部 __main__ 区域的参数
+  2. 运行：python3 publish_article.py
 
-或直接调用：
-  from publish_article import publish_article
-  publish_article(
-      title="...",
-      slug="...",
-      sub_title="...",
-      content="<p>...</p>",
-      cover_image_path="/path/to/cover.png",
-      ...
+【作为模块调用】
+  from publish_article import publish_article, generate_cover
+
+  cover = generate_cover("文章标题", template="mint")
+  result = publish_article(
+      title            = "The 7 Best iLovePDF Alternatives",
+      slug             = "the-best-ilovepdf-alternatives",
+      sub_title        = "副标题/SEO描述",
+      content          = "<p>正文HTML...</p>",
+      cover_image_path = cover,
+      read_time        = 6,
+      banners          = [6],       # Top list
+      tags             = [17],      # Manage PDF
+      related_keywords = ["PDF", "alternative"],
+      seo_title        = "...",
+      seo_description  = "...",
+      seo_keywords     = "...",
   )
+  print(result["url"])
 
-CMS 字段参考（固定值）：
-  category:        1  = How-to & Tips
-  box:             1  = yellow-pdf converter (Windows CTA)
+【完整发布流程】
+  1. 上传封面图到 media library → 获得 image_id
+  2. POST /api/articles 创建文章（含 seo.metaSocial）
+  3. PUT /api/articles/:id 补充 relatedArticles
+
+【SEO metaSocial】
+  每篇文章自动写入两条 metaSocial：
+    - socialNetwork: "other"   → Open Graph (Facebook/LinkedIn)
+    - socialNetwork: "twitter" → Twitter Card
+  title/description 与 seo 保持一致
+
+【CMS 字段参考（固定值，不要改）】
+  category:  1  = How-to & Tips
+  box:       1  = yellow-pdf converter (Windows CTA)
   banners:         1  = Accelerate your PDF workflow
                    6  = Top list（alternatives/比较类文章用这个）
   tags:            1  = Edit PDF
@@ -152,6 +174,18 @@ def publish_article(
                 "metaTitle":       seo_title       or f"{title} | PDF Agile",
                 "metaDescription": seo_description or sub_title or "",
                 "keywords":        seo_keywords    or "",
+                "metaSocial": [
+                    {
+                        "socialNetwork": "other",
+                        "title":       seo_title       or f"{title} | PDF Agile",
+                        "description": seo_description or sub_title or "",
+                    },
+                    {
+                        "socialNetwork": "twitter",
+                        "title":       seo_title       or f"{title} | PDF Agile",
+                        "description": seo_description or sub_title or "",
+                    },
+                ],
             }
         }
     }
