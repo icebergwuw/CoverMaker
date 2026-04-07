@@ -80,6 +80,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 <div class="layout">
   <div class="sidebar">
     <h1>Cover Maker</h1>
+    <a href="/auto-publish" style="display:block;background:#2d2d2d;border:1px solid #3a3a3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4A8FA0;text-decoration:none;text-align:center;">🚀 Auto Publish — 全自动抓热点发文</a>
 
     <!-- 模式切换 -->
     <div>
