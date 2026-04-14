@@ -61,7 +61,8 @@ def minimax_ask(prompt: str, model: str = None, timeout: int = 180) -> str:
     }
     payload = {
         "model": model,
-        "max_tokens": 4096,
+        "max_tokens": 16000,
+        "thinking": {"type": "enabled", "budget_tokens": 2000},
         "messages": [{"role": "user", "content": prompt}],
     }
     for attempt in range(5):
