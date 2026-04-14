@@ -186,6 +186,22 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
             "A complete PDF solution for all PDF needs":
                 "Une solution PDF complète pour tous les besoins en matière de PDF",
         },
+        "zh-Hant": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "如何用3個簡單步驟重新排列PDF文件？",
+            "Accelerate your PDF workflow like never before":
+                "以前所未有的方式加速您的PDF工作流程",
+            "A complete PDF solution for all PDF needs":
+                "滿足所有PDF需求的完整解決方案",
+        },
+        "es": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "¿Cómo reorganizar un documento PDF en 3 sencillos pasos?",
+            "Accelerate your PDF workflow like never before":
+                "Acelera tu flujo de trabajo PDF como nunca antes",
+            "A complete PDF solution for all PDF needs":
+                "Una solución PDF completa para todas tus necesidades",
+        },
         # 其他语言在此添加
     }
     for en_key, tr_val in MANUAL_PATCHES.get(locale, {}).items():
@@ -777,7 +793,7 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
 
     payload = {
         "locale":      locale,
-        "slug":        en_attrs["slug"],  # slug 与英文版保持一致，不加语言后缀
+        "slug":        en_attrs["slug"] + f"-{locale}",  # Strapi slug 全局唯一，必须区分 locale
         "navbarStyle": en_attrs.get("navbarStyle"),
         "blocks":      new_blocks,
     }
