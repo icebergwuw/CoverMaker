@@ -50,7 +50,8 @@ def _save_published(tools: list):
 # ── MiniMax API 调用 ──────────────────────────────────────
 
 def minimax_ask(prompt: str, model: str = None, timeout: int = 180) -> str:
-    """调用 MiniMax Anthropic 兼容 API，返回 assistant 完整回复。"""
+    """调用 MiniMax Anthropic 兼容 API，返回 assistant 完整回复。529 限流自动重试。"""
+    import time
     if model is None:
         model = MINIMAX_MODEL
     headers = {
@@ -63,19 +64,26 @@ def minimax_ask(prompt: str, model: str = None, timeout: int = 180) -> str:
         "max_tokens": 4096,
         "messages": [{"role": "user", "content": prompt}],
     }
-    resp = requests.post(
-        f"{MINIMAX_BASE}/v1/messages",
-        headers=headers,
-        json=payload,
-        timeout=timeout,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    # 兼容 thinking + text 两种 content block
-    for block in data.get("content", []):
-        if block.get("type") == "text":
-            return block["text"].strip()
-    return ""
+    for attempt in range(5):
+        resp = requests.post(
+            f"{MINIMAX_BASE}/v1/messages",
+            headers=headers,
+            json=payload,
+            timeout=timeout,
+        )
+        if resp.status_code == 529:
+            wait = 15 * (attempt + 1)
+            print(f"[minimax_ask] 529 限流，{wait}s 后重试 (attempt {attempt+1}/5)...")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        data = resp.json()
+        # 兼容 thinking + text 两种 content block
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                return block["text"].strip()
+        return ""
+    raise RuntimeError("MiniMax API 持续 529，已重试 5 次")
 
 
 def minimax_image(prompt: str, ratio: str = "4:3") -> str:
