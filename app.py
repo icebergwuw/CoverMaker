@@ -500,24 +500,10 @@ select option { background: #2d2d2d; }
     <div class="step" id="step-trends"><div class="dot">1</div>抓热点</div>
     <div class="step" id="step-plan"><div class="dot">2</div>AI规划</div>
     <div class="step" id="step-content"><div class="dot">3</div>写正文</div>
-    <div class="step" id="step-cover"><div class="dot">4</div>生封面</div>
-    <div class="step" id="step-publish"><div class="dot">5</div>发布</div>
-  </div>
-
-  <!-- 参数 -->
-  <div>
-    <label>话题关键词</label>
-    <input type="text" id="topicInput" value="PDF tools alternatives 2026" placeholder="PDF tools alternatives 2026">
-  </div>
-  <div>
-    <label>封面配色</label>
-    <select id="templateSelect">
-      <option value="mint">薄荷绿 mint</option>
-      <option value="teal">青绿 teal</option>
-      <option value="pink">粉色 pink</option>
-      <option value="orange">橙黄 orange</option>
-      <option value="warm">暖黄 warm</option>
-    </select>
+    <div class="step" id="step-seo"><div class="dot">4</div>SEO优化</div>
+    <div class="step" id="step-translate"><div class="dot">5</div>法语版</div>
+    <div class="step" id="step-cover"><div class="dot">6</div>生封面</div>
+    <div class="step" id="step-publish"><div class="dot">7</div>发布</div>
   </div>
 
   <button class="btn-main" id="runBtn" onclick="startPipeline()">
@@ -538,16 +524,21 @@ select option { background: #2d2d2d; }
 
 <script>
 const STEP_MAP = {
-  trends:      'step-trends',
-  trends_done: 'step-trends',
-  plan:        'step-plan',
-  plan_done:   'step-plan',
-  content:     'step-content',
-  content_done:'step-content',
-  cover:       'step-cover',
-  cover_done:  'step-cover',
-  publish:     'step-publish',
-  done:        'step-publish',
+  trends:         'step-trends',
+  trends_done:    'step-trends',
+  plan:           'step-plan',
+  plan_done:      'step-plan',
+  content:        'step-content',
+  content_done:   'step-content',
+  seo:            'step-seo',
+  seo_done:       'step-seo',
+  translate:      'step-translate',
+  translate_done: 'step-translate',
+  cover:          'step-cover',
+  cover_done:     'step-cover',
+  publish_en:     'step-publish',
+  publish_fr:     'step-publish',
+  done:           'step-publish',
 };
 
 function setStep(step, status) {
@@ -582,14 +573,11 @@ function startPipeline() {
   document.getElementById('logBox').innerHTML = '';
 
   // 重置步骤
-  ['step-trends','step-plan','step-content','step-cover','step-publish']
+  ['step-trends','step-plan','step-content','step-seo','step-translate','step-cover','step-publish']
     .forEach(id => { const el = document.getElementById(id); el.classList.remove('active','done','error'); });
 
-  const topic    = document.getElementById('topicInput').value.trim() || 'PDF tools alternatives 2026';
-  const template = document.getElementById('templateSelect').value;
-
   // SSE 连接
-  const url = `/api/auto-publish/run?topic=${encodeURIComponent(topic)}&template=${encodeURIComponent(template)}`;
+  const url = '/api/auto-publish/run';
   const es  = new EventSource(url);
 
   es.onmessage = (e) => {
@@ -616,8 +604,9 @@ function startPipeline() {
       const result = JSON.parse(detail);
       document.getElementById('resultTitle').textContent = result.title;
       const urlEl = document.getElementById('resultUrl');
-      urlEl.href = result.url;
-      urlEl.textContent = result.url;
+      const enUrl = result.en ? result.en.url : result.url;
+      urlEl.href = enUrl;
+      urlEl.textContent = enUrl + (result.fr ? ' + 法语版' : '');
       document.getElementById('resultCard').classList.add('show');
       btn.disabled = false;
       document.getElementById('btnIcon').textContent = '🚀';
@@ -628,12 +617,16 @@ function startPipeline() {
   };
 
   es.onerror = () => {
-    addLog('error', '连接中断', 'error');
-    btn.disabled = false;
-    document.getElementById('btnIcon').textContent = '🚀';
-    document.getElementById('btnText').textContent = '重新开始';
-    document.getElementById('btnText').classList.remove('pulsing');
-    es.close();
+    // CONNECTING=0 表示正在自动重连，不视为真正的错误
+    if (es.readyState === EventSource.CLOSED) {
+      addLog('error', '连接已关闭', 'error');
+      btn.disabled = false;
+      document.getElementById('btnIcon').textContent = '🚀';
+      document.getElementById('btnText').textContent = '重新开始';
+      document.getElementById('btnText').classList.remove('pulsing');
+      es.close();
+    }
+    // readyState === CONNECTING (0) 时浏览器在自动重连，静默等待即可
   };
 }
 </script>
@@ -642,7 +635,12 @@ function startPipeline() {
 """
 
 import queue
+import threading as _threading
 from flask import Response, stream_with_context
+
+# 全局流水线状态，防止重连时重复启动
+_pipeline_queue   = None   # type: queue.Queue | None
+_pipeline_running = False
 
 @app.route("/auto-publish")
 def auto_publish_page():
@@ -656,46 +654,51 @@ def auto_publish_page_html():
 
 @app.route("/api/auto-publish/run")
 def auto_publish_run():
-    topic    = request.args.get("topic", "PDF tools alternatives 2026")
-    template = request.args.get("template", "mint")
+    global _pipeline_queue, _pipeline_running
 
-    def generate():
-        q = queue.Queue()
+    # 只在流水线没在跑时才启动新任务
+    if not _pipeline_running:
+        _pipeline_running = True
+        _pipeline_queue   = queue.Queue()
 
-        def progress_cb(step, detail=""):
-            # 判断是否是完成事件
-            if step.endswith("_done") or step == "done":
-                q.put({"step": step, "detail": detail, "status": "done"})
-            else:
-                q.put({"step": step, "detail": detail, "status": "active"})
+        q = _pipeline_queue
 
-        import threading
+        def progress_cb(step, detail="", status=None):
+            if status is None:
+                status = "done" if (step.endswith("_done") or step == "done") else "active"
+            q.put({"step": step, "detail": detail, "status": status})
+
         from auto_publish import run_pipeline
 
-        result_holder = {}
-        error_holder  = {}
-
         def worker():
+            global _pipeline_running
             try:
-                result = run_pipeline(topic=topic, template=template, progress_cb=progress_cb)
-                result_holder["data"] = result
+                result = run_pipeline(progress_cb=progress_cb)
+                q.put({"step": "result", "detail": json.dumps(result, ensure_ascii=False), "status": "result"})
             except Exception as e:
-                error_holder["msg"] = str(e)
+                q.put({"step": "error", "detail": str(e), "status": "error"})
             finally:
                 q.put(None)  # sentinel
+                _pipeline_running = False
 
-        threading.Thread(target=worker, daemon=True).start()
+        _threading.Thread(target=worker, daemon=True).start()
 
-        while True:
-            item = q.get()
-            if item is None:
-                break
-            yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+    def generate():
+        import queue as _queue
+        q = _pipeline_queue
+        done = False
+        while not done:
+            try:
+                item = q.get(timeout=15)
+                if item is None:
+                    done = True
+                    q.put(None)  # 放回 sentinel，供其他重连连接读到结束
+                else:
+                    yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+            except _queue.Empty:
+                # 心跳，防止浏览器/代理因无数据而断开连接
+                yield ": keepalive\n\n"
 
-        if error_holder:
-            yield f"data: {json.dumps({'step':'error','detail':error_holder['msg'],'status':'error'}, ensure_ascii=False)}\n\n"
-        elif result_holder:
-            yield f"data: {json.dumps({'step':'result','detail':json.dumps(result_holder['data'], ensure_ascii=False),'status':'result'}, ensure_ascii=False)}\n\n"
 
     return Response(
         stream_with_context(generate()),

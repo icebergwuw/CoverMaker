@@ -55,8 +55,8 @@ PDF Agile CMS 文章自动发布工具
 import os, sys, json, requests
 
 # ── 配置 ────────────────────────────────────────────────
-TOKEN = "943d4d58e9c61ed7ed300b801991e19e4c0f5ff395577c340a187347b1670fcf4d9026a39eff43d63a9dae041afa582ae85db8148dcc80110db98f56a3129366df98f20ccc690264afd8f061fcee8fba747d2cc4ad13f1b59897e2bdcae1b2fb930aba1ee498f866e459905cf03b6b17f4fa955f34ea45e9f327d9b0ca7cb9d2"
-BASE  = "http://pdfagile-cms.aix-test-k8s.iweikan.cn"
+TOKEN = os.environ.get("CMS_TOKEN", "")
+BASE  = os.environ.get("CMS_BASE", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
 
 HEADERS     = {"Authorization": f"Bearer {TOKEN}"}
 HEADERS_JSON = {**HEADERS, "Content-Type": "application/json"}
@@ -194,6 +194,8 @@ def publish_article(
     }
 
     resp = requests.post(f"{BASE}/api/articles", headers=HEADERS_JSON, json=payload)
+    if not resp.ok:
+        raise ValueError(f"CMS 400: {resp.text[:500]}")
     resp.raise_for_status()
     article = resp.json()["data"]
     article_id   = article["id"]
@@ -229,12 +231,93 @@ def publish_article(
         resp2.raise_for_status()
         print(f"  ✓ relatedArticles 已设置: {related_articles}")
 
-    url = f"https://www.pdfagile.com/blog/{article_slug}"
+    url = f"http://pdfagile-fe.aix-test-k8s.iweikan.cn/blog/{article_slug}"
     print(f"\n{'='*60}")
     print(f"✅ 发布完成！")
     print(f"   Article ID : {article_id}")
     print(f"   URL        : {url}")
     print(f"{'='*60}\n")
+
+    return {"id": article_id, "slug": article_slug, "url": url}
+
+
+def publish_localization(
+    en_article_id: int,
+    title: str,
+    slug: str,
+    content: str,
+    cover_image_path: str,
+    locale: str           = "fr",
+    sub_title: str        = "",
+    read_time: int        = 7,
+    heat: int             = 99,
+    seo_title: str        = "",
+    seo_description: str  = "",
+    seo_keywords: str     = "",
+) -> dict:
+    """
+    给已有英文文章创建多语言版本（法语等）。
+    使用 Strapi i18n 接口：POST /api/articles/:id/localizations
+    返回 {"id": ..., "slug": ..., "url": ...}
+    """
+    print(f"\n{'='*60}")
+    print(f"发布 {locale} 本地化版本：{title}")
+    print(f"{'='*60}")
+
+    # 上传封面图
+    print(f"\n[1/2] 上传封面图...")
+    image_id = upload_image(cover_image_path, alt_text=title)
+
+    # 创建 localization
+    print(f"\n[2/2] 创建 {locale} localization...")
+    payload = {
+        "locale":   locale,
+        "title":    title,
+        "slug":     slug,
+        "subTitle": sub_title or None,
+        "content":  content,
+        "readTime": read_time,
+        "heat":     heat,
+        "ready":    True,
+        "image":    image_id,
+        "seo": {
+            "metaTitle":       seo_title       or f"{title} | PDF Agile",
+            "metaDescription": seo_description or sub_title or "",
+            "keywords":        seo_keywords    or "",
+            "metaImage":       image_id,
+            "metaSocial": [
+                {
+                    "socialNetwork": "other",
+                    "title":       seo_title       or f"{title} | PDF Agile",
+                    "description": seo_description or sub_title or "",
+                    "image":       image_id,
+                },
+                {
+                    "socialNetwork": "twitter",
+                    "title":       seo_title       or f"{title} | PDF Agile",
+                    "description": seo_description or sub_title or "",
+                    "image":       image_id,
+                },
+            ],
+        }
+    }
+
+    resp = requests.post(
+        f"{BASE}/api/articles/{en_article_id}/localizations",
+        headers=HEADERS_JSON,
+        json=payload,
+    )
+    if not resp.ok:
+        raise ValueError(f"CMS localization 错误: {resp.text[:500]}")
+
+    data = resp.json()
+    # Strapi i18n 接口直接返回新创建的对象（不在 data 层）
+    article_id   = data.get("id") or data.get("data", {}).get("id")
+    article_slug = data.get("slug") or data.get("data", {}).get("attributes", {}).get("slug", slug)
+
+    url = f"http://pdfagile-fe.aix-test-k8s.iweikan.cn/blog/{article_slug}"
+    print(f"  ✓ {locale} 版本创建成功 id={article_id}")
+    print(f"  URL: {url}")
 
     return {"id": article_id, "slug": article_slug, "url": url}
 

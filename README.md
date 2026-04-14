@@ -28,7 +28,33 @@ Python + Pillow 批量生成封面图，支持三种品牌模板。
 pip install -r requirements.txt
 python app.py
 # 浏览器自动打开 http://127.0.0.1:5299
+# Auto Publish → http://127.0.0.1:5299/auto-publish
 ```
+
+> macOS 系统 Python 用户（无 venv）：
+> ```bash
+> /usr/bin/python3 -m pip install -r requirements.txt --user
+> ```
+> 然后双击 `启动.command` 即可，或：
+> ```bash
+> ./启动.command
+> ```
+
+## Auto Publish（全自动发博客）
+
+访问 `http://127.0.0.1:5299/auto-publish`，点击"开始自动发布"，流程：
+
+1. Tavily 抓取热点趋势
+2. AI 规划选题（排除已发过的工具）
+3. AI 生成英文文章 + SEO 审核
+4. AI 翻译法文版
+5. AI 生成封面图
+6. 自动发布到 CMS（英文 + 法文）
+
+**依赖环境：**
+- `dvcode` CLI 已安装并在 PATH 中（用于调用 AI）
+- Tavily API Key 已配置在 `auto_publish.py`
+- CMS Bearer Token 已配置在 `publish_article.py`
 
 ## CLI 用法
 
@@ -70,9 +96,4 @@ cover-maker/
 vercel --prod
 ```
 
-## 打包为 macOS App
 
-```bash
-pyinstaller CoverMaker.spec
-# 输出：dist/CoverMaker.app
-```
