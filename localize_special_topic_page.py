@@ -79,7 +79,7 @@ def fetch_en_page(page_id: int) -> dict:
         "&populate[blocks][populate][icon]=*"
         "&populate[blocks][populate][buttons][populate]=*"
         "&populate[blocks][populate][background]=*"
-        "&populate[blocks][populate][header]=*"
+        "&populate[blocks][populate][header][populate][icon]=*"
         "&populate[blocks][populate][steps][populate]=*"
         "&populate[blocks][populate][faq]=*"
         "&populate[blocks][populate][subFeatures][populate]=*"
@@ -536,7 +536,10 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                 entry["background"] = bg_id
             if fb.get("header"):
                 h = fb["header"]
-                entry["header"] = {
+                # 从英文版 header 取 icon id（法语版 header 是新建的，icon 未复制）
+                en_cta_header = (en_cta or {}).get("header") or {}
+                icon_id = strip_media_to_id(en_cta_header.get("icon"))
+                header_entry = {
                     "id":             h["id"],
                     "theme":          h.get("theme"),
                     "label":          h.get("label"),
@@ -544,6 +547,9 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                     "customizeTitle": h.get("customizeTitle", ""),
                     "customizeText":  h.get("customizeText", ""),
                 }
+                if icon_id:
+                    header_entry["icon"] = icon_id
+                entry["header"] = header_entry
             # buttons：带 link，从英文版取 href/target/isExternal，翻译 label
             fr_btns = fb.get("buttons", [])
             en_btns = en_cta.get("buttons", []) if en_cta else []
