@@ -668,7 +668,7 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
 
     payload = {
         "locale":      locale,
-        "slug":        en_attrs["slug"] + f"-{locale}",
+        "slug":        en_attrs["slug"],  # slug 与英文版保持一致，不加语言后缀
         "navbarStyle": en_attrs.get("navbarStyle"),
         "blocks":      new_blocks,
     }

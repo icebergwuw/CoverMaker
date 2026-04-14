@@ -78,7 +78,7 @@ def gemini_image(prompt: str, ratio: str = "4:3") -> str:
         "16:9": "1280x720",
         "1:1":  "1024x1024",
     }
-    url = f"{GEMINI_BASE}/gemini-3-flash-image-preview:generateContent?key={GEMINI_API_KEY}"
+    url = f"{GEMINI_BASE}/gemini-2.5-flash-image:generateContent?key={GEMINI_API_KEY}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
@@ -240,7 +240,10 @@ def generate_article_plan(trends: list[dict]) -> dict:
   "read_time": 8
 }}"""
 
-    raw = gemini_ask(prompt, )
+    prompt += """
+
+IMPORTANT: Output JSON only, all values must be in English except topic_reason which can be in Chinese."""
+    raw = gemini_ask(prompt)
     plan = _parse_json(raw)
 
     # 自动匹配配色
@@ -319,6 +322,7 @@ Base your choices on real products that are commonly compared to {tool}."""
 
     # Part 1+2+3 (Intro, What is, Benefits/Limitations, Alternatives list)
     prompt1 = f"""You are a professional SEO blog writer for PDF Agile.
+IMPORTANT: Write ENTIRELY in English. Do NOT include any Chinese characters anywhere in the output.
 
 Write Parts 1-3 of a blog post titled: "{title}"
 Primary keyword: {kw}
@@ -361,6 +365,7 @@ Use ONLY real pricing data from the competitor info provided. Do not fabricate n
 
     # Part 3 continued (remaining competitors) + Comparison Table + Buyer's Guide + FAQ
     prompt2 = f"""You are a professional SEO blog writer for PDF Agile.
+IMPORTANT: Write ENTIRELY in English. Do NOT include any Chinese characters anywhere in the output.
 
 Continue the blog post "{title}". Write the remaining sections.
 Competitors covered so far: PDF Agile + {', '.join(competitors[:min(3, num_competitors)])}
@@ -464,6 +469,7 @@ def generate_article_fr(plan: dict, en_content: str) -> tuple[dict, str]:
     mid  = len(en_content) // 2
 
     prompt1 = f"""Tu es un rédacteur SEO professionnel pour PDF Agile. Traduis ce contenu HTML en français naturel et professionnel.
+IMPORTANT: N'inclure AUCUN caractère chinois dans la sortie. Uniquement du français et de l'anglais.
 
 Règles strictes :
 - Garde tous les noms de logiciels en anglais (PDF Agile, {tool}, etc.)
@@ -476,6 +482,7 @@ Contenu à traduire (partie 1) :
 Sortie HTML directement :"""
 
     prompt2 = f"""Tu es un rédacteur SEO professionnel pour PDF Agile. Traduis ce contenu HTML en français naturel et professionnel.
+IMPORTANT: N'inclure AUCUN caractère chinois dans la sortie. Uniquement du français et de l'anglais.
 
 Règles strictes :
 - Garde tous les noms de logiciels en anglais (PDF Agile, {tool}, etc.)
