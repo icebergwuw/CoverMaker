@@ -997,7 +997,7 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
 
     payload = {
         "locale":      locale,
-        "slug":        en_attrs["slug"] + f"-{locale}",  # Strapi slug 全局唯一，必须区分 locale
+        "slug":        en_attrs["slug"],  # 与英文版保持一致
         "navbarStyle": en_attrs.get("navbarStyle"),
         "blocks":      new_blocks,
     }
@@ -1067,7 +1067,7 @@ def _localize_with_tmap(
 
     # 构建 POST payload（复用 localize() 内的逻辑）
     en_slug = en_attrs.get("slug", "")
-    slug = f"{en_slug}-{locale.lower()}"
+    slug = en_slug  # 与英文版保持一致
     title_en = en_attrs.get("title") or ""
 
     blocks_payload = [convert_block(b, t_map) for b in en_blocks]
