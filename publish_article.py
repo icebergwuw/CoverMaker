@@ -55,11 +55,17 @@ PDF Agile CMS 文章自动发布工具
 import os, sys, json, requests
 
 # ── 配置 ────────────────────────────────────────────────
-TOKEN = os.environ.get("CMS_TOKEN", "")
-BASE  = os.environ.get("CMS_BASE", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
+def _token():
+    return os.environ.get("CMS_TOKEN", "")
 
-HEADERS     = {"Authorization": f"Bearer {TOKEN}"}
-HEADERS_JSON = {**HEADERS, "Content-Type": "application/json"}
+def _base():
+    return os.environ.get("CMS_BASE", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
+
+def _headers():
+    return {"Authorization": f"Bearer {_token()}"}
+
+def _headers_json():
+    return {**_headers(), "Content-Type": "application/json"}
 
 # ── 固定资源 ID（从CMS查询得到，不要改）────────────────
 CATEGORY_HOW_TO_TIPS = 1
@@ -80,8 +86,8 @@ def upload_image(image_path: str, alt_text: str = "") -> int:
     name     = os.path.splitext(filename)[0]
     with open(image_path, "rb") as f:
         resp = requests.post(
-            f"{BASE}/api/upload",
-            headers=HEADERS,
+            f"{_base()}/api/upload",
+            headers=_headers(),
             files={"files": (filename, f, "image/png")},
             data={"fileInfo": json.dumps({
                 "name": name,
@@ -102,8 +108,8 @@ def find_related_articles(keywords: list[str], exclude_id: int = None, limit: in
         if len(found) >= limit:
             break
         resp = requests.get(
-            f"{BASE}/api/articles",
-            headers=HEADERS,
+            f"{_base()}/api/articles",
+            headers=_headers(),
             params={
                 "filters[title][$containsi]": kw,
                 "fields[0]": "id",
@@ -193,7 +199,7 @@ def publish_article(
         }
     }
 
-    resp = requests.post(f"{BASE}/api/articles", headers=HEADERS_JSON, json=payload)
+    resp = requests.post(f"{_base()}/api/articles", headers=_headers_json(), json=payload)
     if not resp.ok:
         raise ValueError(f"CMS 400: {resp.text[:500]}")
     resp.raise_for_status()
@@ -224,8 +230,8 @@ def publish_article(
             }
         }
         resp2 = requests.put(
-            f"{BASE}/api/articles/{article_id}",
-            headers=HEADERS_JSON,
+            f"{_base()}/api/articles/{article_id}",
+            headers=_headers_json(),
             json=ra_payload
         )
         resp2.raise_for_status()
@@ -303,8 +309,8 @@ def publish_localization(
     }
 
     resp = requests.post(
-        f"{BASE}/api/articles/{en_article_id}/localizations",
-        headers=HEADERS_JSON,
+        f"{_base()}/api/articles/{en_article_id}/localizations",
+        headers=_headers_json(),
         json=payload,
     )
     if not resp.ok:
