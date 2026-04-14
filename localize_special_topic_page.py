@@ -208,7 +208,156 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
             "Free Download": "Descarga gratis",
             "Pricing":       "Precios",
         },
-        # 其他语言在此添加
+        "de": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Wie ordnet man PDF-Seiten in 3 einfachen Schritten neu an?",
+            "Accelerate your PDF workflow like never before":
+                "Beschleunigen Sie Ihren PDF-Workflow wie nie zuvor",
+            "A complete PDF solution for all PDF needs":
+                "Eine vollständige PDF-Lösung für alle PDF-Anforderungen",
+            "Free Download": "Kostenlos herunterladen",
+            "Pricing":       "Preise",
+        },
+        "pt": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Como reorganizar páginas PDF em 3 etapas fáceis?",
+            "Accelerate your PDF workflow like never before":
+                "Acelere seu fluxo de trabalho PDF como nunca antes",
+            "A complete PDF solution for all PDF needs":
+                "Uma solução PDF completa para todas as necessidades",
+            "Free Download": "Download grátis",
+            "Pricing":       "Preços",
+        },
+        "it": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Come riorganizzare le pagine PDF in 3 semplici passaggi?",
+            "Accelerate your PDF workflow like never before":
+                "Accelera il tuo flusso di lavoro PDF come mai prima",
+            "A complete PDF solution for all PDF needs":
+                "Una soluzione PDF completa per tutte le esigenze",
+            "Free Download": "Download gratuito",
+            "Pricing":       "Prezzi",
+        },
+        "ja": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "3つの簡単なステップでPDFページを並べ替える方法",
+            "Accelerate your PDF workflow like never before":
+                "これまでにないほどPDFワークフローを加速させましょう",
+            "A complete PDF solution for all PDF needs":
+                "あらゆるPDFニーズに対応する完全なPDFソリューション",
+            "Free Download": "無料ダウンロード",
+            "Pricing":       "料金",
+        },
+        "ko": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "3가지 간단한 단계로 PDF 페이지를 재배열하는 방법",
+            "Accelerate your PDF workflow like never before":
+                "전례 없는 속도로 PDF 워크플로우를 가속하세요",
+            "A complete PDF solution for all PDF needs":
+                "모든 PDF 요구 사항을 위한 완벽한 PDF 솔루션",
+            "Free Download": "무료 다운로드",
+            "Pricing":       "가격",
+        },
+        "ar": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "كيف تعيد ترتيب صفحات PDF في 3 خطوات سهلة؟",
+            "Accelerate your PDF workflow like never before":
+                "سرّع سير عمل PDF الخاص بك كما لم يحدث من قبل",
+            "A complete PDF solution for all PDF needs":
+                "حل PDF متكامل لجميع احتياجات PDF",
+            "Free Download": "تحميل مجاني",
+            "Pricing":       "الأسعار",
+        },
+        "id": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Bagaimana cara menyusun ulang halaman PDF dalam 3 langkah mudah?",
+            "Accelerate your PDF workflow like never before":
+                "Percepat alur kerja PDF Anda seperti belum pernah sebelumnya",
+            "A complete PDF solution for all PDF needs":
+                "Solusi PDF lengkap untuk semua kebutuhan PDF",
+            "Free Download": "Unduh gratis",
+            "Pricing":       "Harga",
+        },
+        "vi": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Làm thế nào để sắp xếp lại các trang PDF trong 3 bước đơn giản?",
+            "Accelerate your PDF workflow like never before":
+                "Tăng tốc quy trình làm việc PDF của bạn như chưa từng có",
+            "A complete PDF solution for all PDF needs":
+                "Giải pháp PDF hoàn chỉnh cho mọi nhu cầu PDF",
+            "Free Download": "Tải xuống miễn phí",
+            "Pricing":       "Bảng giá",
+        },
+        "th": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "วิธีการจัดเรียงหน้า PDF ใหม่ใน 3 ขั้นตอนง่ายๆ",
+            "Accelerate your PDF workflow like never before":
+                "เร่งความเร็วเวิร์กโฟลว์ PDF ของคุณอย่างที่ไม่เคยมีมาก่อน",
+            "A complete PDF solution for all PDF needs":
+                "โซลูชัน PDF ที่ครบครันสำหรับทุกความต้องการด้าน PDF",
+            "Free Download": "ดาวน์โหลดฟรี",
+            "Pricing":       "ราคา",
+        },
+        "ms": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Bagaimana untuk menyusun semula halaman PDF dalam 3 langkah mudah?",
+            "Accelerate your PDF workflow like never before":
+                "Percepatkan aliran kerja PDF anda seperti tidak pernah sebelumnya",
+            "A complete PDF solution for all PDF needs":
+                "Penyelesaian PDF lengkap untuk semua keperluan PDF",
+            "Free Download": "Muat turun percuma",
+            "Pricing":       "Harga",
+        },
+        "tr": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "PDF sayfaları 3 kolay adımda nasıl yeniden düzenlenir?",
+            "Accelerate your PDF workflow like never before":
+                "PDF iş akışınızı hiç olmadığı kadar hızlandırın",
+            "A complete PDF solution for all PDF needs":
+                "Tüm PDF ihtiyaçları için eksiksiz bir PDF çözümü",
+            "Free Download": "Ücretsiz indir",
+            "Pricing":       "Fiyatlandırma",
+        },
+        "pl": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Jak zmienić kolejność stron PDF w 3 prostych krokach?",
+            "Accelerate your PDF workflow like never before":
+                "Przyspiesz swój przepływ pracy z PDF jak nigdy dotąd",
+            "A complete PDF solution for all PDF needs":
+                "Kompleksowe rozwiązanie PDF dla wszystkich potrzeb PDF",
+            "Free Download": "Pobierz za darmo",
+            "Pricing":       "Cennik",
+        },
+        "nl": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Hoe herschik ik PDF-pagina's in 3 eenvoudige stappen?",
+            "Accelerate your PDF workflow like never before":
+                "Versnel uw PDF-workflow zoals nooit tevoren",
+            "A complete PDF solution for all PDF needs":
+                "Een complete PDF-oplossing voor alle PDF-behoeften",
+            "Free Download": "Gratis downloaden",
+            "Pricing":       "Prijzen",
+        },
+        "ro": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Cum să reorganizezi paginile PDF în 3 pași simpli?",
+            "Accelerate your PDF workflow like never before":
+                "Accelerează fluxul tău de lucru PDF ca niciodată",
+            "A complete PDF solution for all PDF needs":
+                "O soluție PDF completă pentru toate nevoile PDF",
+            "Free Download": "Descărcare gratuită",
+            "Pricing":       "Prețuri",
+        },
+        "hi": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "3 आसान चरणों में PDF पृष्ठों को कैसे पुनर्व्यवस्थित करें?",
+            "Accelerate your PDF workflow like never before":
+                "अपने PDF वर्कफ़्लो को पहले से कहीं अधिक तेज़ करें",
+            "A complete PDF solution for all PDF needs":
+                "सभी PDF आवश्यकताओं के लिए एक संपूर्ण PDF समाधान",
+            "Free Download": "मुफ्त डाउनलोड",
+            "Pricing":       "मूल्य निर्धारण",
+        },
     }
     for en_key, tr_val in MANUAL_PATCHES.get(locale, {}).items():
         if en_key not in translation_map:
