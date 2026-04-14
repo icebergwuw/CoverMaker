@@ -8,10 +8,9 @@ import os, re, json, subprocess, tempfile, base64, requests
 
 # ── 常量（全部从环境变量读取，本地用 .env，线上在 Railway 里配置）────
 TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "")
-MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "sk-cp-6KWwIruCR98Euzmci7whjzcCmcVHP8gW0EXrqdw0qvk1Onz2-EIoflvD0a4oeQJ6ZZ7TcvVWs0jxKlLztKB-RHevISUk1c7RIT-2z6k2wH9takU-MXpKmIQ")
-MINIMAX_BASE    = "https://api.minimaxi.com/anthropic"
-MINIMAX_MODEL   = "MiniMax-M2.7"
-MINIMAX_FAST    = "MiniMax-M2.7"
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "GEMINI_KEY_REMOVED")
+GEMINI_BASE     = "https://generativelanguage.googleapis.com/v1beta/models"
+GEMINI_MODEL    = "gemini-2.5-flash"
 
 CMS_TOKEN = os.environ.get("CMS_TOKEN", "")
 CMS_BASE  = os.environ.get("CMS_BASE", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
@@ -47,108 +46,56 @@ def _save_published(tools: list):
         json.dump(tools, f, ensure_ascii=False, indent=2)
 
 
-# ── MiniMax API 调用 ──────────────────────────────────────
+# ── Gemini API 调用 ───────────────────────────────────────
 
-def minimax_ask(prompt: str, model: str = None, timeout: int = 180) -> str:
-    """调用 MiniMax Anthropic 兼容 API，返回 assistant 完整回复。529 限流自动重试。"""
+def gemini_ask(prompt: str, model: str = None, timeout: int = 300) -> str:
+    """调用 Gemini API，返回完整回复文本。429 限流自动重试。"""
     import time
     if model is None:
-        model = MINIMAX_MODEL
-    headers = {
-        "x-api-key": MINIMAX_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": model,
-        "max_tokens": 8000,
-        "thinking": {"type": "enabled", "budget_tokens": 1000},
-        "messages": [{"role": "user", "content": prompt}],
-    }
+        model = GEMINI_MODEL
+    url = f"{GEMINI_BASE}/{model}:generateContent?key={GEMINI_API_KEY}"
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     for attempt in range(5):
-        resp = requests.post(
-            f"{MINIMAX_BASE}/v1/messages",
-            headers=headers,
-            json=payload,
-            timeout=timeout,
-        )
-        if resp.status_code == 529:
-            wait = 15 * (attempt + 1)
-            print(f"[minimax_ask] 529 限流，{wait}s 后重试 (attempt {attempt+1}/5)...")
+        resp = requests.post(url, json=payload, timeout=timeout)
+        if resp.status_code == 429:
+            wait = 20 * (attempt + 1)
+            print(f"[gemini_ask] 429 限流，{wait}s 后重试 (attempt {attempt+1}/5)...")
             time.sleep(wait)
             continue
         resp.raise_for_status()
         data = resp.json()
-        # 兼容 thinking + text 两种 content block
-        for block in data.get("content", []):
-            if block.get("type") == "text":
-                return block["text"].strip()
-        return ""
-    raise RuntimeError("MiniMax API 持续 529，已重试 5 次")
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    raise RuntimeError("Gemini API 持续 429，已重试 5 次")
 
 
-def minimax_image(prompt: str, ratio: str = "4:3") -> str:
+def gemini_image(prompt: str, ratio: str = "4:3") -> str:
     """
-    调用 MiniMax 图片生成 API，返回本地临时文件路径。
+    调用 Gemini 图片生成 API，返回本地临时文件路径。
     失败时返回 None。
     """
-    # ratio 转换为具体尺寸
     size_map = {
-        "4:3":  {"width": 1024, "height": 768},
-        "16:9": {"width": 1280, "height": 720},
-        "1:1":  {"width": 1024, "height": 1024},
-        "3:4":  {"width": 768,  "height": 1024},
+        "4:3":  "1024x768",
+        "16:9": "1280x720",
+        "1:1":  "1024x1024",
     }
-    size = size_map.get(ratio, {"width": 1024, "height": 768})
-
-    headers = {
-        "Authorization": f"Bearer {MINIMAX_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    url = f"{GEMINI_BASE}/gemini-3-flash-image-preview:generateContent?key={GEMINI_API_KEY}"
     payload = {
-        "model": "image-01",
-        "prompt": prompt,
-        "width":  size["width"],
-        "height": size["height"],
-        "n": 1,
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
     }
     try:
-        resp = requests.post(
-            f"{MINIMAX_BASE}/image_generation",
-            headers=headers,
-            json=payload,
-            timeout=120,
-        )
+        resp = requests.post(url, json=payload, timeout=120)
         resp.raise_for_status()
-        data = resp.json()
-        # 支持 url 和 b64_json 两种返回格式
-        images = data.get("data", {}).get("image_urls", []) or data.get("images", [])
-        if not images:
-            return None
-        first = images[0]
-        if isinstance(first, dict):
-            url = first.get("url") or first.get("image_url")
-        else:
-            url = first
-
-        if url and url.startswith("http"):
-            r = requests.get(url, timeout=30)
-            r.raise_for_status()
-            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-            tmp.write(r.content)
-            tmp.close()
-            return tmp.name
-
-        # b64 格式
-        b64 = (first.get("b64_json") if isinstance(first, dict) else None)
-        if b64:
-            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-            tmp.write(base64.b64decode(b64))
-            tmp.close()
-            return tmp.name
-
+        parts = resp.json()["candidates"][0]["content"]["parts"]
+        for part in parts:
+            if "inlineData" in part:
+                img_data = base64.b64decode(part["inlineData"]["data"])
+                tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                tmp.write(img_data)
+                tmp.close()
+                return tmp.name
     except Exception as e:
-        print(f"[minimax_image] 生图失败: {e}")
+        print(f"[gemini_image] 生图失败: {e}")
     return None
 
 
@@ -278,7 +225,7 @@ def generate_article_plan(trends: list[dict]) -> dict:
   "read_time": 7
 }}"""
 
-    raw = minimax_ask(prompt, model=MINIMAX_FAST)
+    raw = gemini_ask(prompt, )
     plan = _parse_json(raw)
 
     # 自动匹配配色
@@ -346,8 +293,8 @@ Part 2 must include:
 
 Output HTML directly:"""
 
-    part1 = minimax_ask(prompt1, model=MINIMAX_FAST, timeout=300)
-    part2 = minimax_ask(prompt2, model=MINIMAX_FAST, timeout=300)
+    part1 = gemini_ask(prompt1, timeout=300)
+    part2 = gemini_ask(prompt2, timeout=300)
     content = part1 + "\n" + part2
 
     # 把所有 pdfagile.com 子路径链接统一替换成主域名，防止 AI 编造不存在的 URL
@@ -404,7 +351,7 @@ Rules:
 HTML to fix:
 {html[:6000]}"""
 
-    fixed = minimax_ask(fix_prompt, model=MINIMAX_FAST, timeout=300)
+    fixed = gemini_ask(fix_prompt, timeout=300)
     return fixed if fixed.strip().startswith("<") else html
 
 
@@ -439,8 +386,8 @@ Contenu à traduire (partie 2) :
 
 Sortie HTML directement :"""
 
-    fr1 = minimax_ask(prompt1, model=MINIMAX_FAST, timeout=300)
-    fr2 = minimax_ask(prompt2, model=MINIMAX_FAST, timeout=300)
+    fr1 = gemini_ask(prompt1, timeout=300)
+    fr2 = gemini_ask(prompt2, timeout=300)
     fr_html = fr1 + "\n" + fr2
 
     fr_plan = {
@@ -469,7 +416,7 @@ def generate_cover(title: str, cover_prompt: str, template: str) -> str:
     from PIL import Image, ImageDraw
 
     # 尝试 AI 生图
-    src_image = minimax_image(cover_prompt, ratio="4:3")
+    src_image = gemini_image(cover_prompt, ratio="4:3")
 
     # 降级：纯色占位图
     if not src_image:
