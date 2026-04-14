@@ -196,6 +196,19 @@ def generate_article_plan(trends: list[dict]) -> dict:
 
     already = ", ".join(_load_published())
 
+    # 随机标题句式模板
+    import random
+    num = random.randint(7, 12)
+    title_templates = [
+        f"The {num} Best [Tool] Alternatives to Use in 2026",
+        f"Top {num} [Tool] Alternatives You Should Know in 2026",
+        f"Top {num} [Tool] Alternatives You Won't Want to Miss in 2026",
+        f"{num} Best [Tool] Alternatives for PDF Editing in 2026",
+        f"The {num} [Tool] Alternatives Worth Trying in 2026",
+        f"Top {num} [Tool] Alternatives to Boost Your PDF Workflow in 2026",
+    ]
+    title_tpl = random.choice(title_templates)
+
     prompt = f"""你是 PDF Agile 博客编辑。下面是今天从 Reddit、ProductHunt 等平台抓取的真实用户讨论。
 
 【今日热点讨论】
@@ -210,19 +223,21 @@ def generate_article_plan(trends: list[dict]) -> dict:
 3. 不能选这些已发布的工具：{already}
 4. 选题逻辑要基于上面的真实讨论内容，不要凭空猜测
 
+标题模板（把 [Tool] 替换成实际工具名）：{title_tpl}
+
 只输出 JSON，不要任何其他文字：
 
 {{
-  "title": "The 7 Best [Tool] Alternatives to Use in 2026",
-  "slug": "the-best-[tool]-alternatives-to-use",
+  "title": "{title_tpl.replace('[Tool]', 'TOOLNAME')}",
+  "slug": "best-[tool]-alternatives-2026",
   "sub_title": "...",
-  "seo_title": "The 7 Best [Tool] Alternatives to Use in 2026 | PDF Agile",
+  "seo_title": "...",
   "seo_description": "...",
   "keywords": "...",
   "topic_keyword": "[Tool]",
   "topic_reason": "一句话说明为什么选这个工具（基于热点数据）",
   "cover_prompt": "modern PDF software UI screenshot, clean minimal design, professional, high quality",
-  "read_time": 7
+  "read_time": 8
 }}"""
 
     raw = gemini_ask(prompt, )
@@ -240,64 +255,150 @@ def generate_article_plan(trends: list[dict]) -> dict:
 
 # ── Step 3: AI 写英文正文 ─────────────────────────────────
 
+def fetch_competitor_data(tool: str, alternatives: list[str]) -> dict:
+    """用 Tavily 抓取竞品官网的真实定价和功能数据。"""
+    from tavily import TavilyClient
+    client = TavilyClient(api_key=TAVILY_API_KEY)
+    data = {}
+
+    # 抓主工具信息
+    try:
+        r = client.search(f"{tool} PDF editor pricing features official site 2026", max_results=3, search_depth="basic")
+        data[tool] = "\n".join(x.get("content", "")[:300] for x in r.get("results", []))
+    except Exception:
+        data[tool] = ""
+
+    # 抓每个替代品
+    for alt in alternatives:
+        try:
+            r = client.search(f"{alt} PDF editor pricing plans features 2026 site:{alt.lower().replace(' ','-')}.com OR {alt} official", max_results=2, search_depth="basic")
+            data[alt] = "\n".join(x.get("content", "")[:300] for x in r.get("results", []))
+        except Exception:
+            data[alt] = ""
+
+    return data
+
+
 def generate_article_en(plan: dict, trends: list[dict]) -> str:
-    """生成英文 HTML 正文，分两段生成，内置 SEO 要求。"""
-    tool    = plan["topic_keyword"]
-    title   = plan["title"]
-    kw      = plan.get("keywords", f"{tool} alternatives, PDF editor").split(",")[0].strip()
-    refs    = "\n".join(f"- {r['title']}: {r['snippet'][:120]}" for r in trends[:4])
+    """生成英文 HTML 正文，按5-Part结构，用Tavily抓真实竞品数据。"""
+    import random
+    tool  = plan["topic_keyword"]
+    title = plan["title"]
+    kw    = plan.get("keywords", f"{tool} alternatives, PDF editor").split(",")[0].strip()
 
-    seo_rules = f"""SEO requirements (strictly follow):
-- First paragraph must contain the primary keyword "{kw}" naturally
-- Each H2 heading must include a relevant keyword variation
-- Use the primary keyword "{kw}" 3-5 times total in the article (natural density, not stuffing)
-- Every image placeholder comment must have descriptive alt text in this format: <!-- img alt="descriptive alt text here" -->
-- Include 2-3 mentions of PDF Agile as a link, ONLY use this exact URL: <a href="https://www.pdfagile.com" style="color:#4A8FA0;">PDF Agile</a> — do NOT invent any other URLs or subpages
-- At the end, add an FAQ section with 3 questions as H2 + p pairs (helps Google rich snippets)"""
+    # 从标题提取数字
+    num_match = re.search(r'\b(\d+)\b', title)
+    num_alts  = int(num_match.group(1)) if num_match else 8
+    # PDF Agile 算#1，其余从竞品里选
+    num_competitors = num_alts - 1
 
+    # 先让AI选出竞品列表
+    pick_prompt = f"""List exactly {num_competitors} real PDF editor alternatives to {tool} (NOT {tool} itself, NOT PDF Agile).
+Return ONLY a JSON array of product names, e.g. ["Adobe Acrobat", "Nitro PDF", ...]
+Base your choices on real products that are commonly compared to {tool}."""
+    raw_list = gemini_ask(pick_prompt, timeout=60)
+    try:
+        competitors = json.loads(re.search(r'\[.*?\]', raw_list, re.DOTALL).group())[:num_competitors]
+    except Exception:
+        competitors = ["Adobe Acrobat", "Nitro PDF Pro", "PDFelement", "Foxit PDF Editor", "PDF24", "UPDF", "Smallpdf"][:num_competitors]
+
+    # 用Tavily抓真实数据
+    comp_data = fetch_competitor_data(tool, competitors)
+
+    # 构建竞品数据上下文
+    comp_context = ""
+    for name, info in comp_data.items():
+        if info:
+            comp_context += f"\n### {name}\n{info[:400]}\n"
+
+    seo_note = f"""SEO rules:
+- Use keyword "{kw}" naturally 3-5 times total
+- All HTML tags must have style="color:#0E101A;"
+- PDF Agile links: ONLY <a href="https://www.pdfagile.com" style="color:#4A8FA0;">PDF Agile</a>
+- Output pure HTML only, no markdown fences"""
+
+    # Part 1+2+3 (Intro, What is, Benefits/Limitations, Alternatives list)
     prompt1 = f"""You are a professional SEO blog writer for PDF Agile.
 
-Write part 1 of a blog post: "{title}"
+Write Parts 1-3 of a blog post titled: "{title}"
 Primary keyword: {kw}
-Competing tool: {tool}
-References: {refs}
+Number of alternatives to cover: {num_alts} (PDF Agile is #1)
+Competitors (use real data below): {', '.join(competitors)}
 
-{seo_rules}
+Real competitor data from their websites:
+{comp_context}
 
-Output pure HTML only (p, h2, h3, strong, ul, li — each tag with style="color:#0E101A;"). No markdown fences.
+{seo_note}
 
-Part 1 must include:
-- H1 tag with the exact title: {title}
-- Two intro paragraphs mentioning "{kw}" in the first paragraph
-- Tools #1–#4: H2 heading with keyword, Key Features (3-4 bullets), Pros, Cons, Best For
-- PDF Agile must be #1 as the best overall alternative, with a link to https://www.pdfagile.com
+Structure to follow (output HTML directly):
 
-Output HTML directly:"""
+<h1 style="color:#0E101A;">{title}</h1>
 
+[Intro paragraph: briefly introduce the topic, mention "{kw}", explain why users look for alternatives]
+
+<h2 style="color:#0E101A;">What is {tool}?</h2>
+[2-3 paragraphs: what it does, who uses it, market position]
+
+<h2 style="color:#0E101A;">Benefits and Limitations of {tool}</h2>
+[Benefits: 3-4 bullet points with real strengths]
+[Limitations: 3-4 bullet points with real pain points based on user complaints]
+
+<h2 style="color:#0E101A;">The {num_alts} Best {tool} Alternatives</h2>
+[Brief intro sentence leading into the list]
+
+[Then for PDF Agile (#1) and competitors #2 to #{min(4, num_alts)}:]
+For EACH tool use this structure:
+<h3 style="color:#0E101A;">#N. [Tool Name] — [one-line tagline]</h3>
+<p>[2-sentence overview]</p>
+<h4 style="color:#0E101A;">Key Features</h4><ul>[4-5 li items]</ul>
+<h4 style="color:#0E101A;">Pros</h4><ul>[3-4 li items]</ul>
+<h4 style="color:#0E101A;">Cons</h4><ul>[2-3 li items]</ul>
+<h4 style="color:#0E101A;">Pricing</h4><p>[Real pricing from the data above. If unknown write "Check official website for current pricing."]</p>
+<h4 style="color:#0E101A;">Best For</h4><p>[one sentence]</p>
+
+PDF Agile must be #1 with link: <a href="https://www.pdfagile.com" style="color:#4A8FA0;">PDF Agile</a>
+Use ONLY real pricing data from the competitor info provided. Do not fabricate numbers."""
+
+    # Part 3 continued (remaining competitors) + Comparison Table + Buyer's Guide + FAQ
     prompt2 = f"""You are a professional SEO blog writer for PDF Agile.
 
-Write part 2 of a blog post: "{title}"
-Primary keyword: {kw}
+Continue the blog post "{title}". Write the remaining sections.
+Competitors covered so far: PDF Agile + {', '.join(competitors[:min(3, num_competitors)])}
+Remaining competitors to cover: {', '.join(competitors[min(3, num_competitors):])}
 
-{seo_rules}
+Real competitor data:
+{comp_context}
 
-Output pure HTML only (p, h2, h3, strong, ul, li — each tag with style="color:#0E101A;"). No markdown fences.
+{seo_note}
 
-Part 2 must include:
-- Tools #5, #6, #7 (real {tool} alternatives, not PDF Agile), each with H2 heading, Key Features, Pros, Cons, Best For
-- A closing "How to Choose" H2 section
-- An FAQ section with exactly 3 questions as H2 headings + p answer pairs:
-  - "What is the best free {tool} alternative?"
-  - "Is PDF Agile better than {tool}?"
-  - "What {tool} alternative works on Mac?"
+Output HTML directly continuing from where Part 1 left off:
 
-Output HTML directly:"""
+[Continue the alternatives list for remaining competitors #{min(4, num_alts)+1} to #{num_alts}, same structure as above]
+
+<h2 style="color:#0E101A;">Comparison Table: {tool} Alternatives at a Glance</h2>
+<table style="width:100%;border-collapse:collapse;color:#0E101A;">
+  <tr style="background:#f5f5f5;"><th>Tool</th><th>Best For</th><th>Pricing (Starting)</th><th>Platform</th><th>Key Strength</th></tr>
+  [one tr row per tool including PDF Agile — use real data, write "Contact for pricing" if unknown]
+</table>
+
+<h2 style="color:#0E101A;">Buyer's Guide: How to Choose the Right {tool} Alternative</h2>
+<p>[2 paragraphs on key factors to consider]</p>
+<h3 style="color:#0E101A;">Best for Small Business / Startups</h3><p>[recommend 1-2 tools with reason]</p>
+<h3 style="color:#0E101A;">Best for Freelancers</h3><p>[recommend 1-2 tools with reason]</p>
+<h3 style="color:#0E101A;">Best for Enterprise Teams</h3><p>[recommend 1-2 tools with reason]</p>
+<h3 style="color:#0E101A;">Best Free Option</h3><p>[recommend 1 tool with reason]</p>
+
+<h2 style="color:#0E101A;">Frequently Asked Questions</h2>
+[5-7 FAQ items based on real user questions about {tool} alternatives, each as:]
+<h3 style="color:#0E101A;">[Question]</h3><p>[Answer, 2-3 sentences]</p>
+
+<h2 style="color:#0E101A;">Conclusion</h2>
+<p>[2 paragraphs summarizing, mention PDF Agile as top recommendation with link]</p>"""
 
     part1 = gemini_ask(prompt1, timeout=300)
     part2 = gemini_ask(prompt2, timeout=300)
     content = part1 + "\n" + part2
 
-    # 把所有 pdfagile.com 子路径链接统一替换成主域名，防止 AI 编造不存在的 URL
     content = re.sub(
         r'href="https?://(?:www\.)?pdfagile\.com/[^"]*"',
         'href="https://www.pdfagile.com"',

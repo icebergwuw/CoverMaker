@@ -523,7 +523,8 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             })
 
         elif comp == "blocks.cta":
-            # header 和 buttons 已在 POST 时新建，带 id 保留
+            # 从英文版取 cta 结构（buttons 含 link）
+            en_cta = next((b for b in en_blocks if b["__component"] == "blocks.cta"), None)
             entry = {
                 "id":       bid,
                 "__component": comp,
@@ -543,7 +544,24 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                     "customizeTitle": h.get("customizeTitle", ""),
                     "customizeText":  h.get("customizeText", ""),
                 }
-            entry["buttons"] = [{"id": btn["id"], "theme": btn["theme"]} for btn in fb.get("buttons", [])]
+            # buttons：带 link，从英文版取 href/target/isExternal，翻译 label
+            fr_btns = fb.get("buttons", [])
+            en_btns = en_cta.get("buttons", []) if en_cta else []
+            patched_buttons = []
+            for i, btn in enumerate(fr_btns):
+                en_btn = en_btns[i] if i < len(en_btns) else {}
+                en_link = en_btn.get("link") or {}
+                btn_entry = {"id": btn["id"], "theme": btn["theme"]}
+                if en_link:
+                    btn_entry["link"] = {
+                        "href":       en_link.get("href"),
+                        "label":      translate(en_link.get("label"), t_map),
+                        "target":     en_link.get("target"),
+                        "isExternal": en_link.get("isExternal", False),
+                        "disabled":   en_link.get("disabled", False),
+                    }
+                patched_buttons.append(btn_entry)
+            entry["buttons"] = patched_buttons
             result.append(entry)
 
         elif comp == "blocks.faq":
