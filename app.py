@@ -733,7 +733,10 @@ def api_localize_history():
 @app.route("/api/localize/run")
 def api_localize_run():
     from flask import Response, stream_with_context
-    page_id          = int(request.args.get("page_id"))
+    raw_id = request.args.get("page_id", "").strip()
+    if not raw_id:
+        return jsonify({"error": "page_id is required"}), 400
+    page_id          = int(raw_id)
     page_title       = request.args.get("page_title", "")
     locales          = request.args.get("locales", "").split(",")
     sheet_name       = request.args.get("sheet_name", "")
@@ -753,7 +756,10 @@ def api_localize_run():
 @app.route("/api/localize/retry")
 def api_localize_retry():
     from flask import Response, stream_with_context
-    page_id          = int(request.args.get("page_id"))
+    raw_id = request.args.get("page_id", "").strip()
+    if not raw_id:
+        return jsonify({"error": "page_id is required"}), 400
+    page_id          = int(raw_id)
     page_title       = request.args.get("page_title", "")
     locale           = request.args.get("locale")
     sheet_name       = request.args.get("sheet_name", "")
