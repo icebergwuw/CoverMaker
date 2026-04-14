@@ -996,6 +996,76 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
     return new_id
 
 
+def _localize_with_tmap(
+    page_id: int,
+    locale: str,
+    en_attrs: dict,
+    en_blocks: list,
+    t_map: dict,
+    publish: bool = True,
+) -> int:
+    """
+    使用已构建好的 t_map 执行本地化（跳过 Excel 读取）。
+    供 localize_agent.py 的 AI 翻译模式调用。
+    返回新建页面的 id。
+    """
+    from datetime import datetime, timezone as _tz
+
+    print(f"\n=== _localize_with_tmap ===")
+    print(f"  page_id : {page_id}")
+    print(f"  locale  : {locale}")
+    print(f"  t_map   : {len(t_map)} 条")
+
+    # 构建 POST payload（复用 localize() 内的逻辑）
+    en_slug = en_attrs.get("slug", "")
+    slug = f"{en_slug}-{locale.lower()}"
+    title_en = en_attrs.get("title") or ""
+
+    blocks_payload = [convert_block(b, t_map) for b in en_blocks]
+
+    post_payload = {
+        "locale": locale,
+        "slug":   slug,
+        "title":  translate(title_en, t_map) if title_en else slug,
+        "blocks": blocks_payload,
+    }
+
+    resp = requests.post(
+        f"{CMS_BASE}/api/special-topic-pages/{page_id}/localizations",
+        headers=headers_json(),
+        json=post_payload,
+    )
+    if resp.status_code not in (200, 201):
+        raise RuntimeError(f"POST failed {resp.status_code}: {resp.text[:200]}")
+
+    result = resp.json()
+    new_id = result.get("id")
+    print(f"  创建成功！新 id = {new_id}")
+
+    # PUT 补全 trustedBy 并发布
+    fr_blocks   = fetch_fr_blocks(new_id)
+    patch_blocks = build_patch_blocks(fr_blocks, en_blocks, t_map)
+
+    published_at = datetime.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z") if publish else None
+    patch_payload = {"data": {"blocks": patch_blocks}}
+    if published_at:
+        patch_payload["data"]["publishedAt"] = published_at
+
+    patch_resp = requests.put(
+        f"{CMS_BASE}/api/special-topic-pages/{new_id}",
+        headers=headers_json(),
+        json=patch_payload,
+    )
+    if patch_resp.status_code != 200:
+        raise RuntimeError(f"PUT failed {patch_resp.status_code}: {patch_resp.text[:200]}")
+
+    print(f"  补全成功！publishedAt = {patch_resp.json()['data']['attributes'].get('publishedAt')}")
+
+    verify(new_id, en_blocks, locale, t_map)
+
+    return new_id
+
+
 # ── CLI 入口 ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
