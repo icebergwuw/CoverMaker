@@ -175,6 +175,15 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
                 fr_answer_html = "".join(f"<p>{line[1]}</p>" for line in answer_lines)
                 _FAQ_ANSWER_MAP[en_q_stripped] = fr_answer_html
 
+    # 补丁：Strapi 里的文本与 Excel 有细微差异的条目，手动对齐
+    MANUAL_PATCHES = {
+        "How to Rearrange a PDF document in 3 easy steps?":
+            "Comment réorganiser des pages PDF en 3 étapes faciles ?",
+    }
+    for en_key, fr_val in MANUAL_PATCHES.items():
+        if en_key not in translation_map:
+            translation_map[en_key] = fr_val
+
     print(f"  翻译表加载完成：{len(translation_map)} 条普通映射，{len(_FAQ_ANSWER_MAP)} 条 FAQ 分组（sheet: {sheet_name}）")
     return translation_map
 
@@ -252,17 +261,36 @@ def strip_buttons(buttons: list) -> list:
 
 
 def strip_steps(steps: list, t_map: dict) -> list:
-    """step-cards 的 steps 子项：翻译 customizeText，复用 media id"""
+    """step-cards 的 steps 子项：翻译 customizeText（去 HTML 标签后匹配），复用 media id"""
     if not steps:
         return []
+    import re as _re
     result = []
     for s in steps:
+        # customizeText 格式: "<p>Launch PDF Agile...</p>" (Strapi 无编号)
+        # Excel 里对应行格式: "1. Launch PDF Agile..." (有编号前缀)
+        # 策略：先直接匹配，再尝试在 t_map 里找带编号前缀的 key
+        raw_ct = s.get("customizeText") or ""
+        plain_ct = _re.sub(r'<[^>]+>', '', raw_ct).strip()
+        fr_ct = translate(plain_ct, t_map)
+        if fr_ct == plain_ct:
+            # 尝试在翻译表里找 "N. {plain_ct}" 格式的 key
+            for k, v in t_map.items():
+                k_body = _re.sub(r'^\d+\.\s*', '', k.strip())
+                if k_body == plain_ct:
+                    # 取对应法语，去掉编号前缀
+                    fr_ct = _re.sub(r'^\d+[\.\s：:]+\s*', '', v.strip())
+                    break
+        if fr_ct and fr_ct != plain_ct:
+            translated_ct = f"<p>{fr_ct}</p>" if not fr_ct.startswith("<") else fr_ct
+        else:
+            translated_ct = raw_ct  # 找不到翻译保留原文
         step = {
             "layout":        s.get("layout"),
             "theme":         s.get("theme"),
-            "text":          s.get("text"),
-            "customizeText": s.get("customizeText"),  # step 文本不在 Excel 里，保留英文
-            "title":         s.get("title"),
+            "text":          translate(s.get("text"), t_map),
+            "customizeText": translated_ct,
+            "title":         translate(s.get("title"), t_map),
             "customizeTitle": s.get("customizeTitle", ""),
             "topTitle":      s.get("topTitle"),
         }
@@ -591,6 +619,19 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             if bg_id:
                 entry["backgroundImage"] = bg_id
             result.append(entry)
+
+        elif comp == "feature.step-cards":
+            # 从英文版重建（同 specific-features 模式），翻译 title/subtitle/steps
+            en_sc = next((b for b in en_blocks if b["__component"] == "feature.step-cards"), None)
+            steps_translated = strip_steps(en_sc.get("steps", []) if en_sc else [], t_map)
+            result.append({
+                "id":        bid,
+                "__component": comp,
+                "title":     translate((en_sc or {}).get("title"), t_map),
+                "subtitle":  translate((en_sc or {}).get("subtitle"), t_map),
+                "theme":     fb.get("theme"),
+                "steps":     steps_translated,
+            })
 
         else:
             # 其他 block：只传 id 和 __component，保持不变
