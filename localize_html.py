@@ -221,9 +221,17 @@ async function loadPages() {
   const sel = document.getElementById('pageSelect');
   sel.innerHTML = '<option value="">-- 加载中... --</option>';
   try {
-    const r = await fetch('/api/localize/pages?env=' + currentEnv);
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 15000);
+    const r = await fetch('/api/localize/pages?env=' + currentEnv, {signal: ctrl.signal});
+    clearTimeout(tid);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const pages = await r.json();
     if (pages.error) throw new Error(pages.error);
+    if (!Array.isArray(pages) || pages.length === 0) {
+      sel.innerHTML = '<option value="">-- 无文章（检查环境连接）--</option>';
+      return;
+    }
     sel.innerHTML = '<option value="">-- 选择文章 --</option>';
     pages.forEach(p => {
       const o = document.createElement('option');
@@ -367,7 +375,7 @@ function addRetryBtn(locale, errMsg) {
   const item = document.createElement('div');
   item.className = 'retry-item'; item.id = 'retry-' + locale;
   item.innerHTML = '<span>' + locale + ': ' + errMsg.slice(0,50) + '</span>'
-    + '<button class="btn-retry" onclick="retryLocale(\'' + locale + '\')">↺ 重试</button>';
+    + '<button class="btn-retry" onclick="retryLocale(this.dataset.locale)" data-locale="' + locale + '">↺ 重试</button>';
   list.appendChild(item);
 }
 
