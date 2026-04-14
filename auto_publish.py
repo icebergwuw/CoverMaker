@@ -8,10 +8,10 @@ import os, re, json, subprocess, tempfile, base64, requests
 
 # ── 常量（全部从环境变量读取，本地用 .env，线上在 Railway 里配置）────
 TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "")
-MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
-MINIMAX_BASE    = "https://api.minimax.io/v1"
-MINIMAX_MODEL   = "MiniMax-M1"          # 主力写作模型
-MINIMAX_FAST    = "MiniMax-M1"          # 快速模型（可换 MiniMax-M1-40k）
+MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "sk-cp-6KWwIruCR98Euzmci7whjzcCmcVHP8gW0EXrqdw0qvk1Onz2-EIoflvD0a4oeQJ6ZZ7TcvVWs0jxKlLztKB-RHevISUk1c7RIT-2z6k2wH9takU-MXpKmIQ")
+MINIMAX_BASE    = "https://api.minimaxi.com/anthropic"
+MINIMAX_MODEL   = "MiniMax-M2.7"
+MINIMAX_FAST    = "MiniMax-M2.7"
 
 CMS_TOKEN = os.environ.get("CMS_TOKEN", "")
 CMS_BASE  = os.environ.get("CMS_BASE", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
@@ -50,26 +50,32 @@ def _save_published(tools: list):
 # ── MiniMax API 调用 ──────────────────────────────────────
 
 def minimax_ask(prompt: str, model: str = None, timeout: int = 180) -> str:
-    """调用 MiniMax Chat API，返回 assistant 完整回复。"""
+    """调用 MiniMax Anthropic 兼容 API，返回 assistant 完整回复。"""
     if model is None:
         model = MINIMAX_MODEL
     headers = {
-        "Authorization": f"Bearer {MINIMAX_API_KEY}",
+        "x-api-key": MINIMAX_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
     }
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 4096,
+        "messages": [{"role": "user", "content": prompt}],
     }
     resp = requests.post(
-        f"{MINIMAX_BASE}/chat/completions",
+        f"{MINIMAX_BASE}/v1/messages",
         headers=headers,
         json=payload,
         timeout=timeout,
     )
     resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    data = resp.json()
+    # 兼容 thinking + text 两种 content block
+    for block in data.get("content", []):
+        if block.get("type") == "text":
+            return block["text"].strip()
+    return ""
 
 
 def minimax_image(prompt: str, ratio: str = "4:3") -> str:
