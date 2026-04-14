@@ -179,6 +179,10 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
     MANUAL_PATCHES = {
         "How to Rearrange a PDF document in 3 easy steps?":
             "Comment réorganiser des pages PDF en 3 étapes faciles ?",
+        "Accelerate your PDF workflow like never before":
+            "Accélérez votre flux de travail PDF comme jamais auparavant",
+        "A complete PDF solution for all PDF needs":
+            "Une solution PDF complète pour tous les besoins en matière de PDF",
     }
     for en_key, fr_val in MANUAL_PATCHES.items():
         if en_key not in translation_map:
@@ -565,14 +569,14 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                 entry["background"] = bg_id
             if fb.get("header"):
                 h = fb["header"]
-                # 从英文版 header 取 icon id（法语版 header 是新建的，icon 未复制）
+                # 从英文版 header 取原文翻译，icon 复用
                 en_cta_header = (en_cta or {}).get("header") or {}
                 icon_id = strip_media_to_id(en_cta_header.get("icon"))
                 header_entry = {
                     "id":             h["id"],
-                    "theme":          h.get("theme"),
-                    "label":          h.get("label"),
-                    "title":          h.get("title"),
+                    "theme":          en_cta_header.get("theme") or h.get("theme"),
+                    "label":          translate(en_cta_header.get("label") or h.get("label"), t_map),
+                    "title":          translate(en_cta_header.get("title") or h.get("title"), t_map),
                     "customizeTitle": h.get("customizeTitle", ""),
                     "customizeText":  h.get("customizeText", ""),
                 }
