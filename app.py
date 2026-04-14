@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from make_cover import make_cover, PRESETS
 from make_pdfagile_cover import make_pdfagile_cover
 from make_howtotips2_cover import make_howtotips2_cover
+import localize_agent
 
 app = Flask(__name__)
 
@@ -80,7 +81,7 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 <div class="layout">
   <div class="sidebar">
     <h1>Cover Maker</h1>
-    <a href="/auto-publish" style="display:block;background:#2d2d2d;border:1px solid #3a3a3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4A8FA0;text-decoration:none;text-align:center;">🚀 Auto Publish — 全自动抓热点发文</a>
+    <div style="display:flex;flex-direction:column;gap:8px;"><a href="/auto-publish" style="display:block;background:#2d2d2d;border:1px solid #3a3a3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4A8FA0;text-decoration:none;text-align:center;">🚀 Auto Publish — 全自动抓热点发文</a><a href="/localize" style="display:block;background:#2d2d2d;border:1px solid #3a3a3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4A8FA0;text-decoration:none;text-align:center;">🌐 Localize — 多语言本地化</a></div>
 
     <!-- 模式切换 -->
     <div>
@@ -709,6 +710,67 @@ def auto_publish_run():
         }
     )
 
+# ── Localize Agent 路由 ───────────────────────────────────────────────────────
+
+@app.route("/localize")
+def localize_page():
+    from localize_html import LOCALIZE_HTML
+    return LOCALIZE_HTML
+
+@app.route("/api/localize/pages")
+def api_localize_pages():
+    env = request.args.get("env", "test")
+    try:
+        pages = localize_agent.fetch_pages(env)
+        return jsonify(pages)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/localize/history")
+def api_localize_history():
+    return jsonify(localize_agent.load_history())
+
+@app.route("/api/localize/run")
+def api_localize_run():
+    from flask import Response, stream_with_context
+    page_id          = int(request.args.get("page_id"))
+    page_title       = request.args.get("page_title", "")
+    locales          = request.args.get("locales", "").split(",")
+    sheet_name       = request.args.get("sheet_name", "")
+    excel_path       = request.args.get("excel_path", "")
+    translation_mode = request.args.get("translation_mode", "excel")
+    env              = request.args.get("env", "test")
+    gen = localize_agent.run_localize_sse(
+        page_id=page_id, page_title=page_title, locales=locales,
+        sheet_name=sheet_name, excel_path=excel_path,
+        translation_mode=translation_mode, env=env,
+    )
+    return Response(
+        stream_with_context(gen), mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+@app.route("/api/localize/retry")
+def api_localize_retry():
+    from flask import Response, stream_with_context
+    page_id          = int(request.args.get("page_id"))
+    page_title       = request.args.get("page_title", "")
+    locale           = request.args.get("locale")
+    sheet_name       = request.args.get("sheet_name", "")
+    excel_path       = request.args.get("excel_path", "")
+    translation_mode = request.args.get("translation_mode", "excel")
+    env              = request.args.get("env", "test")
+    gen = localize_agent.run_localize_sse(
+        page_id=page_id, page_title=page_title, locales=[locale],
+        sheet_name=sheet_name, excel_path=excel_path,
+        translation_mode=translation_mode, env=env,
+    )
+    return Response(
+        stream_with_context(gen), mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 def open_browser():
     import time; time.sleep(1)
     webbrowser.open("http://127.0.0.1:5299")
@@ -719,4 +781,5 @@ if __name__ == "__main__":
         threading.Thread(target=open_browser, daemon=True).start()
         print("Cover Maker 启动中 → http://127.0.0.1:5299")
         print("Auto Publish  → http://127.0.0.1:5299/auto-publish")
+        print("Localize      → http://127.0.0.1:5299/localize")
     app.run(host="0.0.0.0", port=port, debug=False)
