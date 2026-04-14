@@ -185,6 +185,8 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
                 "Accélérez votre flux de travail PDF comme jamais auparavant",
             "A complete PDF solution for all PDF needs":
                 "Une solution PDF complète pour tous les besoins en matière de PDF",
+            "Free Download": "Téléchargement gratuit",
+            "Pricing":       "Tarifs",
         },
         "zh-Hant": {
             "How to Rearrange a PDF document in 3 easy steps?":
@@ -193,6 +195,8 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
                 "以前所未有的方式加速您的PDF工作流程",
             "A complete PDF solution for all PDF needs":
                 "滿足所有PDF需求的完整解決方案",
+            "Free Download": "免費下載",
+            "Pricing":       "價格方案",
         },
         "es": {
             "How to Rearrange a PDF document in 3 easy steps?":
@@ -201,6 +205,8 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
                 "Acelera tu flujo de trabajo PDF como nunca antes",
             "A complete PDF solution for all PDF needs":
                 "Una solución PDF completa para todas tus necesidades",
+            "Free Download": "Descarga gratis",
+            "Pricing":       "Precios",
         },
         # 其他语言在此添加
     }
