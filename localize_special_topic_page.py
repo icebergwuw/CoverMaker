@@ -959,7 +959,7 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
     resp = requests.post(url, headers=headers_json(), json=payload)
     if resp.status_code not in (200, 201):
         print(f"  ERROR {resp.status_code}: {resp.text}")
-        sys.exit(1)
+        raise RuntimeError(f"POST {resp.status_code}: {resp.text[:300]}")
 
     result = resp.json()
     new_id = result.get("id")
