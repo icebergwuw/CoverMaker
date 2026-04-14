@@ -782,4 +782,4 @@ if __name__ == "__main__":
         print("Cover Maker 启动中 → http://127.0.0.1:5299")
         print("Auto Publish  → http://127.0.0.1:5299/auto-publish")
         print("Localize      → http://127.0.0.1:5299/localize")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
