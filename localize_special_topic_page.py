@@ -175,18 +175,22 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
                 fr_answer_html = "".join(f"<p>{line[1]}</p>" for line in answer_lines)
                 _FAQ_ANSWER_MAP[en_q_stripped] = fr_answer_html
 
-    # 补丁：Strapi 里的文本与 Excel 有细微差异的条目，手动对齐
-    MANUAL_PATCHES = {
-        "How to Rearrange a PDF document in 3 easy steps?":
-            "Comment réorganiser des pages PDF en 3 étapes faciles ?",
-        "Accelerate your PDF workflow like never before":
-            "Accélérez votre flux de travail PDF comme jamais auparavant",
-        "A complete PDF solution for all PDF needs":
-            "Une solution PDF complète pour tous les besoins en matière de PDF",
+    # 补丁：Strapi 里的文本与 Excel 有细微差异的条目，按 locale 手动对齐
+    # 格式: { locale: { en_text: translated_text } }
+    MANUAL_PATCHES: dict = {
+        "fr": {
+            "How to Rearrange a PDF document in 3 easy steps?":
+                "Comment réorganiser des pages PDF en 3 étapes faciles ?",
+            "Accelerate your PDF workflow like never before":
+                "Accélérez votre flux de travail PDF comme jamais auparavant",
+            "A complete PDF solution for all PDF needs":
+                "Une solution PDF complète pour tous les besoins en matière de PDF",
+        },
+        # 其他语言在此添加
     }
-    for en_key, fr_val in MANUAL_PATCHES.items():
+    for en_key, tr_val in MANUAL_PATCHES.get(locale, {}).items():
         if en_key not in translation_map:
-            translation_map[en_key] = fr_val
+            translation_map[en_key] = tr_val
 
     print(f"  翻译表加载完成：{len(translation_map)} 条普通映射，{len(_FAQ_ANSWER_MAP)} 条 FAQ 分组（sheet: {sheet_name}）")
     return translation_map
@@ -644,6 +648,107 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
     return result
 
 
+def verify(fr_page_id: int, en_blocks: list, locale: str, t_map: dict):
+    """
+    校验新建的本地化版本：
+    - 拉取所有字段
+    - 逐 block 对比英文原文，找出仍为英文的文本字段
+    - 打印 PASS / WARN 报告
+    """
+    import re as _re
+
+    resp = requests.get(
+        f"{CMS_BASE}/api/special-topic-pages/{fr_page_id}"
+        "?populate[blocks][populate][buttons][populate]=*"
+        "&populate[blocks][populate][header][populate][icon]=*"
+        "&populate[blocks][populate][trustedBy][populate]=*"
+        "&populate[blocks][populate][faq]=*"
+        "&populate[blocks][populate][subFeatures][populate]=*"
+        "&populate[blocks][populate][steps][populate]=*"
+        f"&locale={locale}",
+        headers=headers(),
+    )
+    fr_attrs = resp.json()["data"]["attributes"]
+    fr_blocks = fr_attrs.get("blocks", [])
+
+    # 英文版文本字段集合（用于判断某字段是否"仍为英文"）
+    en_texts: set = set()
+    def collect_texts(obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                # label 是 UI 固定标签（如 "Trusted by"），不纳入检查
+                if k in ("title", "text", "subtitle", "customizeText",
+                         "question", "answer", "customizeTitle", "topTitle") and isinstance(v, str) and v.strip():
+                    en_texts.add(_re.sub(r'\s+', ' ', v.strip()))
+                collect_texts(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                collect_texts(v)
+    for b in en_blocks:
+        collect_texts(b)
+
+    warnings = []
+
+    def check_field(comp, field_path, value):
+        if not value or not isinstance(value, str):
+            return
+        plain = _re.sub(r'<[^>]+>', '', value).strip()
+        plain_norm = _re.sub(r'\s+', ' ', plain)
+        if plain_norm in en_texts:
+            warnings.append(f"  WARN [{comp}] {field_path} 仍为英文: {plain_norm[:60]}")
+
+    for fb in fr_blocks:
+        comp = fb.get("__component", "")
+
+        # 通用文本字段
+        for field in ("title", "label", "text", "subtitle"):
+            check_field(comp, field, fb.get(field))
+
+        # header
+        if fb.get("header"):
+            h = fb["header"]
+            for field in ("title", "label", "text"):
+                check_field(comp, f"header.{field}", h.get(field))
+
+        # trustedBy（只检查 label）
+        for i, tb in enumerate(fb.get("trustedBy", [])):
+            if not tb.get("icon", {}).get("data"):
+                warnings.append(f"  WARN [{comp}] trustedBy[{i}].icon 缺失 ({tb.get('label')})")
+
+        # faq
+        for i, item in enumerate(fb.get("faq", [])):
+            check_field(comp, f"faq[{i}].question", item.get("question"))
+            check_field(comp, f"faq[{i}].answer", item.get("answer"))
+
+        # subFeatures
+        for i, sf in enumerate(fb.get("subFeatures", [])):
+            check_field(comp, f"subFeatures[{i}].title", sf.get("title"))
+            check_field(comp, f"subFeatures[{i}].text", sf.get("text"))
+            if not sf.get("media", {}).get("data"):
+                warnings.append(f"  WARN [{comp}] subFeatures[{i}].media 缺失 ({sf.get('title','')})")
+
+        # steps
+        for i, s in enumerate(fb.get("steps", [])):
+            check_field(comp, f"steps[{i}].customizeText", s.get("customizeText"))
+
+        # cta buttons link（只检查 blocks.cta，feature-hero 的 button 结构不同）
+        if comp == "blocks.cta":
+            for i, btn in enumerate(fb.get("buttons", [])):
+                if btn.get("link") is None:
+                    warnings.append(f"  WARN [{comp}] buttons[{i}].link 为 null")
+
+        # trust-by label 是固定 UI 标签，不检查
+
+    if warnings:
+        print(f"  发现 {len(warnings)} 个问题：")
+        for w in warnings:
+            print(w)
+    else:
+        print(f"  ✓ 全部通过，无未翻译字段")
+
+    return len(warnings) == 0
+
+
 def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
     print(f"\n=== localize_special_topic_page ===")
     print(f"  page_id : {page_id}")
@@ -694,7 +799,8 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
     fr_blocks = fetch_fr_blocks(new_id)
     patch_blocks = build_patch_blocks(fr_blocks, en_blocks, t_map)
 
-    published_at = "2026-04-14T08:00:00.000Z" if publish else None
+    from datetime import datetime, timezone
+    published_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z") if publish else None
     patch_payload = {"data": {"blocks": patch_blocks}}
     if published_at:
         patch_payload["data"]["publishedAt"] = published_at
@@ -710,9 +816,12 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
     else:
         print(f"  PATCH ERROR {patch_resp.status_code}: {patch_resp.text}")
 
+    # 6. 校验：对比英文版逐字段检查是否仍为英文原文
+    print(f"\n[6/5] 校验翻译结果...")
+    verify(new_id, en_blocks, locale, t_map)
+
     print(f"\n完成。")
     print(f"  CMS 后台: {CMS_BASE}/admin/content-manager/collectionType/api::special-topic-page.special-topic-page/{new_id}?plugins[i18n][locale]={locale}")
-    return new_id
     return new_id
 
 
