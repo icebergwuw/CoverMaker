@@ -738,13 +738,14 @@ def api_localize_run():
         return jsonify({"error": "page_id is required"}), 400
     page_id          = int(raw_id)
     page_title       = request.args.get("page_title", "")
+    page_slug        = request.args.get("page_slug", "")
     locales          = request.args.get("locales", "").split(",")
     sheet_name       = request.args.get("sheet_name", "")
     excel_path       = request.args.get("excel_path", "")
     translation_mode = request.args.get("translation_mode", "excel")
     env              = request.args.get("env", "test")
     gen = localize_agent.run_localize_sse(
-        page_id=page_id, page_title=page_title, locales=locales,
+        page_id=page_id, page_title=page_title, page_slug=page_slug, locales=locales,
         sheet_name=sheet_name, excel_path=excel_path,
         translation_mode=translation_mode, env=env,
     )
@@ -761,13 +762,14 @@ def api_localize_retry():
         return jsonify({"error": "page_id is required"}), 400
     page_id          = int(raw_id)
     page_title       = request.args.get("page_title", "")
+    page_slug        = request.args.get("page_slug", "")
     locale           = request.args.get("locale")
     sheet_name       = request.args.get("sheet_name", "")
     excel_path       = request.args.get("excel_path", "")
     translation_mode = request.args.get("translation_mode", "excel")
     env              = request.args.get("env", "test")
     gen = localize_agent.run_localize_sse(
-        page_id=page_id, page_title=page_title, locales=[locale],
+        page_id=page_id, page_title=page_title, page_slug=page_slug, locales=[locale],
         sheet_name=sheet_name, excel_path=excel_path,
         translation_mode=translation_mode, env=env,
     )

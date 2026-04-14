@@ -239,6 +239,7 @@ async function loadPages() {
       o.textContent = p.title + '  (id=' + p.id + ')';
       o.dataset.locales    = JSON.stringify(p.locales);
       o.dataset.title      = p.title;
+      o.dataset.slug       = p.slug || '';
       o.dataset.sheet_name = p.sheet_name || '';
       sel.appendChild(o);
     });
@@ -251,7 +252,7 @@ function onPageChange() {
   const sel = document.getElementById('pageSelect');
   const opt = sel.options[sel.selectedIndex];
   if (!opt || !opt.value) { currentPage = null; updateRunBtn(); return; }
-  currentPage = { id: parseInt(opt.value), title: opt.dataset.title };
+  currentPage = { id: parseInt(opt.value), title: opt.dataset.title, slug: opt.dataset.slug || '' };
   const doneLocales = JSON.parse(opt.dataset.locales || '[]');
   const sheetName   = opt.dataset.sheet_name || '';
 
@@ -311,6 +312,7 @@ function updateRunBtn() {
 function buildParams(locales) {
   return new URLSearchParams({
     page_id: currentPage.id, page_title: currentPage.title,
+    page_slug: currentPage.slug || '',
     locales: locales.join(','),
     sheet_name: document.getElementById('sheetName').value.trim(),
     excel_path: document.getElementById('excelPath').value.trim(),
@@ -354,7 +356,11 @@ function handleSSE(ev) {
     case 'done':
       runState.done++;
       chipStates[ev.locale] = 'done'; refreshChips();
-      log('✓ ' + ev.locale + ' (id=' + ev.new_id + ')', 'ok');
+      if (ev.fe_url) {
+        logLink('✓ ' + ev.locale, ev.fe_url);
+      } else {
+        log('✓ ' + ev.locale + ' (id=' + ev.new_id + ')', 'ok');
+      }
       updateProgress(runState.done, runState.total, '');
       break;
     case 'error':
@@ -384,6 +390,19 @@ function log(msg, cls) {
   const b = document.getElementById('logBox');
   const d = document.createElement('div');
   d.className = 'log-' + cls; d.textContent = msg;
+  b.appendChild(d); b.scrollTop = b.scrollHeight;
+}
+
+function logLink(label, url) {
+  const b = document.getElementById('logBox');
+  const d = document.createElement('div');
+  d.className = 'log-ok';
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  a.textContent = url;
+  a.style.cssText = 'color:#6ee7b7;text-decoration:underline;margin-left:6px;';
+  d.textContent = label + ' ';
+  d.appendChild(a);
   b.appendChild(d); b.scrollTop = b.scrollHeight;
 }
 

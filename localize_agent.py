@@ -21,6 +21,11 @@ ENV_CONFIG = {
     },
 }
 
+FE_BASE = {
+    "test": "http://pdfagile-fe.aix-test-k8s.iweikan.cn",
+    "prod": "https://www.pdfagile.com",
+}
+
 ALL_LOCALES = [
     "fr", "zh-Hant", "es", "de", "pt", "it",
     "ja", "ko", "ar", "id", "vi", "th",
@@ -138,6 +143,7 @@ def _sse(data: dict) -> str:
 def run_localize_sse(
     page_id: int,
     page_title: str,
+    page_slug: str,
     locales: list,
     sheet_name: str,
     excel_path: str,
@@ -180,7 +186,8 @@ def run_localize_sse(
             else:
                 new_id = _run_ai_localize(page_id, locale, env, lsp)
 
-            yield _sse({"type": "done", "locale": locale, "new_id": new_id})
+            yield _sse({"type": "done", "locale": locale, "new_id": new_id,
+                        "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}"})
             run_results.append({"locale": locale, "new_id": new_id, "status": "ok", "warnings": []})
 
         except Exception as e:
