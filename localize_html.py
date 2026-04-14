@@ -237,8 +237,9 @@ async function loadPages() {
       const o = document.createElement('option');
       o.value = p.id;
       o.textContent = p.title + '  (id=' + p.id + ')';
-      o.dataset.locales = JSON.stringify(p.locales);
-      o.dataset.title   = p.title;
+      o.dataset.locales    = JSON.stringify(p.locales);
+      o.dataset.title      = p.title;
+      o.dataset.sheet_name = p.sheet_name || '';
       sel.appendChild(o);
     });
   } catch(e) {
@@ -252,7 +253,19 @@ function onPageChange() {
   if (!opt || !opt.value) { currentPage = null; updateRunBtn(); return; }
   currentPage = { id: parseInt(opt.value), title: opt.dataset.title };
   const doneLocales = JSON.parse(opt.dataset.locales || '[]');
-  document.getElementById('sheetName').value = opt.dataset.title;
+  const sheetName   = opt.dataset.sheet_name || '';
+
+  // 自动填 sheet 名
+  document.getElementById('sheetName').value = sheetName;
+
+  // 无对应 sheet → 自动切换到 AI 翻译模式并提示
+  if (!sheetName) {
+    setSource('ai', document.querySelector('.source-tab:nth-child(2)'));
+    document.getElementById('sheetName').placeholder = '（无 Excel sheet，使用 AI 翻译）';
+  } else {
+    setSource('excel', document.querySelector('.source-tab:nth-child(1)'));
+  }
+
   ALL_LOCALES.forEach(l => { chipStates[l] = doneLocales.includes(l) ? 'done' : ''; });
   refreshChips();
   updateRunBtn();

@@ -27,6 +27,23 @@ ALL_LOCALES = [
     "ms", "tr", "pl", "nl", "ro", "hi",
 ]
 
+# slug → Excel sheet 名映射（名称不一致的手动维护）
+SLUG_TO_SHEET: dict = {
+    "extract-data-from-pdf":     "Extract Data from PDF",
+    "edit-pdf-like-powerpoint":  "Edit PDF like PowerPoint",
+    "remove-watermark-from-pdf": "Watermark PDF",
+    "password-protect-pdf":      "Password Protect PDF",
+    "pdf-annotator":             "PDF Annotator",
+    "pdf-printer":               "PDF Printer",
+    "organize-pdf":              "Organize PDF",
+    "adobe-acrobat-alternative": "Adobe Acrobat Alternative",
+    "pdf-converter":             "PDF Converter",
+    "esign-pdfs-legally":        "eSign PDFs Legally",
+    "pdf-maker":                 "PDF Maker",
+    "take-a-screenshot-in-pdf":  "Screenshot",
+    "pdf-reader":                "PDF Reader",
+}
+
 
 def _env(env: str) -> dict:
     return ENV_CONFIG.get(env, ENV_CONFIG["test"])
@@ -81,10 +98,11 @@ def fetch_pages(env: str = "test") -> list:
         ]
 
         pages.append({
-            "id":      item["id"],
-            "title":   title,
-            "slug":    slug,
-            "locales": existing_locales,
+            "id":         item["id"],
+            "title":      title,
+            "slug":       slug,
+            "locales":    existing_locales,
+            "sheet_name": SLUG_TO_SHEET.get(slug, ""),   # 对应 Excel sheet，空=无sheet
         })
 
     pages.sort(key=lambda x: x["title"])
