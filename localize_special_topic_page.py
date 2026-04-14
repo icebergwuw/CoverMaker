@@ -407,6 +407,19 @@ def strip_media_to_id(field_val):
     return field_val
 
 
+def truncate_varchar(text: str, limit: int = 255) -> str:
+    """截断字符串到 limit 个字符（对应数据库 VARCHAR(255) 限制）。
+    在词边界截断，避免截断 UTF-8 多字节字符中间。
+    """
+    if text is None or len(text) <= limit:
+        return text
+    # 在 limit 处往前找空格
+    cut = text.rfind(" ", 0, limit)
+    if cut < limit // 2:   # 找不到合理位置就硬截
+        cut = limit
+    return text[:cut]
+
+
 def strip_buttons(buttons: list) -> list:
     """
     将 buttons 列表转为可写入格式，保留结构，去掉只读属性。
@@ -529,16 +542,22 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
     b = {"__component": comp}
 
     if comp == "feature.feature-hero":
-        b["topTitle"]        = translate(block.get("topTitle"), t_map)
-        b["title"]           = translate(block.get("title"), t_map)
-        b["subtitle"]        = translate(block.get("subtitle"), t_map)
-        b["layout"]          = block.get("layout")
-        b["jsonData"]        = block.get("jsonData")   # 下载链接不翻译
-        b["theme"]           = block.get("theme")
+        # 只传非 null 的可选字段，避免 Strapi 500
+        top = translate(block.get("topTitle"), t_map)
+        if top is not None:
+            b["topTitle"] = top
+        b["title"]    = translate(block.get("title"), t_map)
+        b["subtitle"] = truncate_varchar(translate(block.get("subtitle"), t_map))
+        if block.get("layout") is not None:
+            b["layout"] = block["layout"]
+        if block.get("jsonData") is not None:
+            b["jsonData"] = block["jsonData"]
+        if block.get("theme") is not None:
+            b["theme"] = block["theme"]
         # 复用 backgroundImage
         bg_id = strip_media_to_id(block.get("backgroundImage"))
         if bg_id:
-            b["backgroundImage"] = bg_id
+            b["backgroundImage"] = {"id": bg_id}
         # 翻译 buttons 的 label，其余字段保留（不传 image 字段，避免 Strapi 校验报错）
         raw_btns = block.get("buttons", [])
         new_btns = []
@@ -573,10 +592,10 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         # 复用 media / backgroundImage / icon
         media_id = strip_media_to_id(block.get("media"))
         if media_id:
-            b["media"] = media_id
+            b["media"] = {"id": media_id}
         bg_id = strip_media_to_id(block.get("backgroundImage"))
         if bg_id:
-            b["backgroundImage"] = bg_id
+            b["backgroundImage"] = {"id": bg_id}
         icon_id = strip_media_to_id(block.get("icon"))
         if icon_id:
             b["icon"] = icon_id
@@ -596,19 +615,19 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
             }
             media_id = strip_media_to_id(sf.get("media"))
             if media_id:
-                sub["media"] = media_id
+                sub["media"] = {"id": media_id}
             subs.append(sub)
         b["subFeatures"] = subs
         if block.get("mainFeature"):
             b["mainFeature"] = block["mainFeature"]
         bg_id = strip_media_to_id(block.get("backgroundImage"))
         if bg_id:
-            b["backgroundImage"] = bg_id
+            b["backgroundImage"] = {"id": bg_id}
 
     elif comp == "feature.step-cards":
         b["title"]    = translate(block.get("title"), t_map)
         b["theme"]    = block.get("theme")
-        b["subtitle"] = translate(block.get("subtitle"), t_map)
+        b["subtitle"] = truncate_varchar(translate(block.get("subtitle"), t_map))
         b["steps"]    = strip_steps(block.get("steps", []), t_map)
 
     elif comp == "feature.trust-by":
@@ -616,7 +635,7 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         b["label"]  = block.get("label")
         bg_id = strip_media_to_id(block.get("backgroundImage"))
         if bg_id:
-            b["backgroundImage"] = bg_id
+            b["backgroundImage"] = {"id": bg_id}
         # trustedBy 内嵌 component 在 POST localization 时不能传 id（报500），不传即可
         # 后续通过 patch_localization 用 PUT 补全（PUT 同样不支持），故留空
 
@@ -627,14 +646,14 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         b["faq"]            = strip_faq(block.get("faq", []), t_map)
         bg_id = strip_media_to_id(block.get("backgroundImage"))
         if bg_id:
-            b["backgroundImage"] = bg_id
+            b["backgroundImage"] = {"id": bg_id}
 
     elif comp == "blocks.cta":
         b["theme"] = block.get("theme")
         b["text"]  = block.get("text")
         bg_id = strip_media_to_id(block.get("background"))
         if bg_id:
-            b["background"] = bg_id
+            b["background"] = {"id": bg_id}
         # header：新建（不传 id，POST/PUT localization 不允许跨实体复用 component id）
         if block.get("header"):
             h = block["header"]
@@ -648,9 +667,39 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         # buttons：新建（不传 id）
         b["buttons"] = [{"theme": btn["theme"]} for btn in block.get("buttons", [])]
 
+    elif comp == "feature.swiper":
+        b["title"] = translate(block.get("title"), t_map)
+        b["theme"] = block.get("theme")
+        bg_id = strip_media_to_id(block.get("backgroundImage"))
+        if bg_id:
+            b["backgroundImage"] = {"id": bg_id}
+        # swiper items（若有）
+        items = block.get("items") or block.get("swiperItems") or []
+        if items:
+            new_items = []
+            for item in items:
+                ni = {k: v for k, v in item.items() if k not in ("id", "backgroundImage", "media", "icon")}
+                ni["title"] = translate(item.get("title"), t_map)
+                ni["text"]  = translate(item.get("text"), t_map)
+                media_id = strip_media_to_id(item.get("media"))
+                if media_id:
+                    ni["media"] = {"id": media_id}
+                new_items.append(ni)
+            b["items"] = new_items
+
     else:
-        # 未知 component：原样复制，去掉 id
-        b.update({k: v for k, v in block.items() if k != "id"})
+        # 未知 component：原样复制，去掉 id，并清理 media 字段
+        MEDIA_FIELDS = ("backgroundImage", "media", "icon", "background", "image")
+        for k, v in block.items():
+            if k == "id":
+                continue
+            if k in MEDIA_FIELDS:
+                cleaned = strip_media_to_id(v)
+                if cleaned is not None:
+                    b[k] = cleaned
+                # None 不传（避免 Strapi 报500）
+            else:
+                b[k] = v
 
     return b
 
@@ -702,7 +751,7 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             }
             bg_id = strip_media_to_id(fb.get("backgroundImage"))
             if bg_id:
-                entry["backgroundImage"] = bg_id
+                entry["backgroundImage"] = {"id": bg_id}
             result.append(entry)
 
         elif comp == "feature.specific-features":
@@ -722,7 +771,7 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                 }
                 media_id = strip_media_to_id(sf.get("media"))
                 if media_id:
-                    sub["media"] = media_id
+                    sub["media"] = {"id": media_id}
                 subs.append(sub)
             result.append({
                 "id":           bid,
@@ -741,7 +790,7 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             }
             bg_id = strip_media_to_id(fb.get("background"))
             if bg_id:
-                entry["background"] = bg_id
+                entry["background"] = {"id": bg_id}
             if fb.get("header"):
                 h = fb["header"]
                 # 从英文版 header 取原文翻译，icon 复用
@@ -796,7 +845,7 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             }
             bg_id = strip_media_to_id(fb.get("backgroundImage"))
             if bg_id:
-                entry["backgroundImage"] = bg_id
+                entry["backgroundImage"] = {"id": bg_id}
             result.append(entry)
 
         elif comp == "feature.step-cards":
