@@ -499,16 +499,17 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             result.append(entry)
 
         elif comp == "feature.specific-features":
-            # subFeatures 已经在 POST 时正确创建，带 id 保留即可
+            # subFeatures 从英文版重建（法语版创建时为空），翻译 title/text，复用 media id
+            en_sf_block = next((b for b in en_blocks if b["__component"] == "feature.specific-features"), None)
+            en_subs = en_sf_block.get("subFeatures", []) if en_sf_block else []
             subs = []
-            for sf in fb.get("subFeatures", []):
+            for sf in en_subs:
                 sub = {
-                    "id":            sf["id"],
                     "layout":        sf.get("layout"),
                     "theme":         sf.get("theme"),
-                    "text":          sf.get("text"),
+                    "text":          translate(sf.get("text"), t_map),
                     "customizeText": sf.get("customizeText", ""),
-                    "title":         sf.get("title"),
+                    "title":         translate(sf.get("title"), t_map),
                     "customizeTitle": sf.get("customizeTitle", ""),
                     "topTitle":      sf.get("topTitle"),
                 }
