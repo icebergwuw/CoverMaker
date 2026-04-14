@@ -61,8 +61,8 @@ def minimax_ask(prompt: str, model: str = None, timeout: int = 180) -> str:
     }
     payload = {
         "model": model,
-        "max_tokens": 16000,
-        "thinking": {"type": "enabled", "budget_tokens": 2000},
+        "max_tokens": 8000,
+        "thinking": {"type": "enabled", "budget_tokens": 1000},
         "messages": [{"role": "user", "content": prompt}],
     }
     for attempt in range(5):
@@ -346,8 +346,8 @@ Part 2 must include:
 
 Output HTML directly:"""
 
-    part1 = minimax_ask(prompt1, model=MINIMAX_FAST, timeout=180)
-    part2 = minimax_ask(prompt2, model=MINIMAX_FAST, timeout=180)
+    part1 = minimax_ask(prompt1, model=MINIMAX_FAST, timeout=300)
+    part2 = minimax_ask(prompt2, model=MINIMAX_FAST, timeout=300)
     content = part1 + "\n" + part2
 
     # 把所有 pdfagile.com 子路径链接统一替换成主域名，防止 AI 编造不存在的 URL
@@ -404,7 +404,7 @@ Rules:
 HTML to fix:
 {html[:6000]}"""
 
-    fixed = minimax_ask(fix_prompt, model=MINIMAX_FAST, timeout=180)
+    fixed = minimax_ask(fix_prompt, model=MINIMAX_FAST, timeout=300)
     return fixed if fixed.strip().startswith("<") else html
 
 
@@ -439,8 +439,8 @@ Contenu à traduire (partie 2) :
 
 Sortie HTML directement :"""
 
-    fr1 = minimax_ask(prompt1, model=MINIMAX_FAST, timeout=180)
-    fr2 = minimax_ask(prompt2, model=MINIMAX_FAST, timeout=180)
+    fr1 = minimax_ask(prompt1, model=MINIMAX_FAST, timeout=300)
+    fr2 = minimax_ask(prompt2, model=MINIMAX_FAST, timeout=300)
     fr_html = fr1 + "\n" + fr2
 
     fr_plan = {
