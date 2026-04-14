@@ -70,10 +70,19 @@ def headers_json():
 
 
 def fetch_en_page(page_id: int) -> dict:
-    """拉取英文版完整结构，包含 blocks 所有子字段（image、buttons、steps、faq 等）"""
+    """拉取英文版完整结构，包含 blocks 所有子字段（image、buttons、steps、faq、trustedBy icon 等）"""
     url = (
         f"{CMS_BASE}/api/special-topic-pages/{page_id}"
-        "?populate[blocks][populate]=*"
+        "?populate[blocks][populate][trustedBy][populate]=*"
+        "&populate[blocks][populate][media]=*"
+        "&populate[blocks][populate][backgroundImage]=*"
+        "&populate[blocks][populate][icon]=*"
+        "&populate[blocks][populate][buttons][populate]=*"
+        "&populate[blocks][populate][background]=*"
+        "&populate[blocks][populate][header]=*"
+        "&populate[blocks][populate][steps][populate]=*"
+        "&populate[blocks][populate][faq]=*"
+        "&populate[blocks][populate][subFeatures][populate]=*"
         "&populate[seo][populate]=*"
         "&locale=en"
     )
@@ -85,10 +94,15 @@ def fetch_en_page(page_id: int) -> dict:
 
 # ── Excel translation map ─────────────────────────────────────────────────────
 
+# 全局 FAQ 翻译结构：{ en_question_stripped: fr_answer_html }
+# 由 build_translation_map 填充，供 strip_faq 使用
+_FAQ_ANSWER_MAP: dict = {}
+
+
 def build_translation_map(sheet_name: str, locale: str) -> dict:
     """
     读取 Excel sheet，返回 {english_text: translated_text} 映射。
-    空值或无翻译的条目不加入映射（保留英文原文）。
+    同时填充全局 _FAQ_ANSWER_MAP 用于 FAQ answer 翻译。
     """
     col_name = LOCALE_TO_EXCEL_COL.get(locale)
     if not col_name:
@@ -114,33 +128,78 @@ def build_translation_map(sheet_name: str, locale: str) -> dict:
     except ValueError:
         raise ValueError(f"Excel sheet 中找不到 '{col_name}' 列")
 
+    # Notes 列（用于 FAQ 分组）
+    notes_col = None
+    if "Notes" in headers_row:
+        notes_col = headers_row.index("Notes")
+
+    all_rows = list(ws.iter_rows(min_row=2, values_only=True))
+
     translation_map = {}
-    for row in ws.iter_rows(min_row=2, values_only=True):
+    # 普通一对一映射
+    for row in all_rows:
         en = row[en_col] if len(row) > en_col else None
         tr = row[tr_col] if len(row) > tr_col else None
         if en and tr and str(en).strip() and str(tr).strip():
             translation_map[str(en).strip()] = str(tr).strip()
 
-    print(f"  翻译表加载完成：共 {len(translation_map)} 条翻译（sheet: {sheet_name}, locale: {locale}）")
+    # FAQ 分组：按 Q 行切分，拼接 answer HTML，写入全局 _FAQ_ANSWER_MAP
+    global _FAQ_ANSWER_MAP
+    _FAQ_ANSWER_MAP = {}
+    if notes_col is not None:
+        import re as _re
+        faq_rows_data = [
+            (row[en_col], row[tr_col])
+            for row in all_rows
+            if row[notes_col] and "FAQ" in str(row[notes_col])
+               and row[en_col] and row[tr_col]
+        ]
+        # 切分为 [(en_q, fr_q, [(en_a_line, fr_a_line), ...]), ...]
+        groups: list = []
+        cur_q = None
+        for en_text, fr_text in faq_rows_data:
+            en_s = str(en_text).strip()
+            fr_s = str(fr_text).strip()
+            if _re.match(r'^Q\d+[:\s]', en_s):
+                en_q_stripped = _re.sub(r'^Q\d+[:\s]+', '', en_s).strip()
+                fr_q_stripped = _re.sub(r'^Q\d+[\s\uff1a:]+', '', fr_s).strip()
+                cur_q = (en_q_stripped, fr_q_stripped, [])
+                groups.append(cur_q)
+                # 也加入普通翻译表（question 文本）
+                translation_map[en_q_stripped] = fr_q_stripped
+            elif cur_q is not None:
+                cur_q[2].append((en_s, fr_s))
+
+        for (en_q_stripped, fr_q_stripped, answer_lines) in groups:
+            if answer_lines:
+                fr_answer_html = "".join(f"<p>{line[1]}</p>" for line in answer_lines)
+                _FAQ_ANSWER_MAP[en_q_stripped] = fr_answer_html
+
+    print(f"  翻译表加载完成：{len(translation_map)} 条普通映射，{len(_FAQ_ANSWER_MAP)} 条 FAQ 分组（sheet: {sheet_name}）")
     return translation_map
 
 
 def translate(text, t_map: dict) -> str:
     """
     精确匹配翻译，找不到则返回原文。
-    会做以下标准化处理再匹配：
-    - 去首尾空白
-    - 合并连续空格为单空格
+    标准化处理：去首尾空白、合并连续空格。
+    同时尝试去掉尾部句号后匹配（应对源文本句号不一致问题）。
     """
     if not text:
         return text
     import re
     key = re.sub(r'\s+', ' ', str(text).strip())
-    # 同样标准化 t_map 的 key 来匹配
     for k, v in t_map.items():
         k_norm = re.sub(r'\s+', ' ', str(k).strip())
         if k_norm == key:
             return v
+    # 尝试去掉尾部句号再匹配
+    key_stripped = key.rstrip('.')
+    if key_stripped != key:
+        for k, v in t_map.items():
+            k_norm = re.sub(r'\s+', ' ', str(k).strip())
+            if k_norm == key_stripped:
+                return v
     return text
 
 
@@ -219,25 +278,27 @@ def strip_steps(steps: list, t_map: dict) -> list:
 def strip_faq(faq_items: list, t_map: dict) -> list:
     """
     faq 条目：翻译 question 和 answer。
-    answer 在 Strapi 里是 HTML，Excel 里是纯文本。
-    先尝试 HTML 精确匹配，再尝试去掉 <p> 标签后匹配纯文本，找不到保留英文。
+    - question：精确文本匹配翻译
+    - answer：用 _FAQ_ANSWER_MAP（按 question key 查对应 FR answer HTML）
+              找不到时保留英文原文
     """
     if not faq_items:
         return []
     result = []
     for item in faq_items:
-        q = translate(item.get("question"), t_map)
-        # answer：先整体匹配 HTML，再尝试去 <p> 标签匹配纯文本
+        import re
+        raw_q = item.get("question", "")
+        q = translate(raw_q, t_map)
+
+        # answer：通过 question 找对应的 FR answer HTML
         raw_ans = item.get("answer", "")
-        translated_ans = translate(raw_ans, t_map)
-        if translated_ans == raw_ans:
-            # 去 HTML 标签后再试
-            import re
-            plain = re.sub(r'<[^>]+>', '', raw_ans).strip()
-            plain_tr = translate(plain, t_map)
-            if plain_tr != plain:
-                # 找到翻译，包回 <p>
-                translated_ans = f"<p>{plain_tr}</p>"
+        q_key = re.sub(r'\s+', ' ', str(raw_q).strip())
+        fr_ans = _FAQ_ANSWER_MAP.get(q_key)
+        if fr_ans:
+            translated_ans = fr_ans
+        else:
+            # 回退：尝试普通翻译表（通常找不到，保留英文）
+            translated_ans = translate(raw_ans, t_map)
         result.append({"question": q, "answer": translated_ans})
     return result
 
@@ -407,11 +468,16 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
     - 对 feature.trust-by 补入 trustedBy（从英文版取 label 列表，新建不传 id）
     - 其他 block 只传必要字段 + id，保持不变
     """
-    # 英文版 trust-by 的 trustedBy labels
+    # 英文版 trust-by 的 trustedBy：带 label + icon media id（复用图片）
     en_trusted_labels = []
     for b in en_blocks:
         if b["__component"] == "feature.trust-by":
-            en_trusted_labels = [{"label": t["label"]} for t in b.get("trustedBy", [])]
+            for t in b.get("trustedBy", []):
+                item = {"label": t["label"]}
+                icon_id = strip_media_to_id(t.get("icon"))
+                if icon_id:
+                    item["icon"] = icon_id
+                en_trusted_labels.append(item)
             break
 
     result = []
@@ -425,7 +491,7 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                 "__component": comp,
                 "title":     fb.get("title"),
                 "label":     fb.get("label"),
-                "trustedBy": en_trusted_labels,  # 补入品牌列表
+                "trustedBy": en_trusted_labels,  # 补入品牌列表（含 icon）
             }
             bg_id = strip_media_to_id(fb.get("backgroundImage"))
             if bg_id:
@@ -478,6 +544,27 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
                     "customizeText":  h.get("customizeText", ""),
                 }
             entry["buttons"] = [{"id": btn["id"], "theme": btn["theme"]} for btn in fb.get("buttons", [])]
+            result.append(entry)
+
+        elif comp == "blocks.faq":
+            # 重新翻译 FAQ（POST 时可能用了旧逻辑，此处用最新的 _FAQ_ANSWER_MAP）
+            # 需要从英文版拿原始 question/answer（fr_blocks 里 question 已是法语，无法反向查）
+            en_faq_block = next((b for b in en_blocks if b["__component"] == "blocks.faq"), None)
+            if en_faq_block:
+                faq_translated = strip_faq(en_faq_block.get("faq", []), t_map)
+            else:
+                faq_translated = fb.get("faq", [])
+            entry = {
+                "id":           bid,
+                "__component":  comp,
+                "title":        translate(en_faq_block.get("title") if en_faq_block else fb.get("title"), t_map),
+                "theme":        fb.get("theme"),
+                "customizeTitle": fb.get("customizeTitle", ""),
+                "faq":          faq_translated,
+            }
+            bg_id = strip_media_to_id(fb.get("backgroundImage"))
+            if bg_id:
+                entry["backgroundImage"] = bg_id
             result.append(entry)
 
         else:

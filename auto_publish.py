@@ -7,7 +7,7 @@ auto_publish.py — 全自动：抓热点 → AI规划 → AI写文(英+法) →
 import os, re, json, subprocess, tempfile, base64, requests
 
 # ── 常量（全部从环境变量读取，本地用 .env，线上在 Railway 里配置）────
-TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "")
+TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "TAVILY_KEY_REMOVED")
 GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "GEMINI_KEY_REMOVED")
 GEMINI_BASE     = "https://generativelanguage.googleapis.com/v1beta/models"
 GEMINI_MODEL    = "gemini-2.5-flash"
