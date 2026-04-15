@@ -138,6 +138,24 @@ body {
 .card-body { padding: 20px 24px; }
 .card-divider { height: 1px; background: var(--border-cream); margin: 0 24px; }
 
+/* ── Step header ── */
+.step-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--terracotta); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.step-title {
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
 .section-label {
   font-size: 10px; font-weight: 500;
   letter-spacing: 0.5px; text-transform: uppercase;
@@ -264,7 +282,7 @@ select {
   gap: 5px;
 }
 .lang-chip {
-  border: 1px solid var(--border-warm);
+  border: 1.5px solid var(--border-warm);
   border-radius: var(--r-sm);
   padding: 7px 4px;
   text-align: center; font-size: 12px; font-weight: 500;
@@ -279,18 +297,19 @@ select {
 }
 .lang-chip.done {
   background: var(--green-bg);
-  border-color: rgba(58,138,82,0.2);
+  border-color: var(--green);
   color: var(--green); cursor: default;
 }
 .lang-chip.sel {
   background: var(--orange-bg);
   border-color: var(--terracotta);
-  color: var(--terracotta); font-weight: 600;
+  color: var(--terracotta); font-weight: 700;
+  box-shadow: 0 0 0 1px var(--terracotta);
 }
 .lang-chip.fail {
   background: var(--red-bg);
-  border-color: rgba(181,51,51,0.2);
-  color: var(--red);
+  border-color: var(--red);
+  color: var(--red); font-weight: 600;
 }
 .lang-chip.running {
   background: var(--orange-bg);
@@ -486,7 +505,7 @@ select {
   <!-- 环境 + 文章 -->
   <div class="card">
     <div class="card-body">
-      <div class="section-label">环境</div>
+      <div class="step-header"><span class="step-num">1</span><span class="step-title">环境</span></div>
       <div class="seg-ctrl">
         <button class="seg-btn active" onclick="setEnv('test',this)">测试环境</button>
         <button class="seg-btn" onclick="setEnv('prod',this)">正式环境</button>
@@ -494,7 +513,7 @@ select {
     </div>
     <div class="card-divider"></div>
     <div class="card-body">
-      <div class="section-label">文章</div>
+      <div class="step-header"><span class="step-num">2</span><span class="step-title">文章</span></div>
       <div class="page-row">
         <select id="pageSelect" onchange="onPageChange()">
           <option value="">正在加载…</option>
@@ -507,7 +526,7 @@ select {
   <!-- 翻译来源 -->
   <div class="card">
     <div class="card-body">
-      <div class="section-label">翻译来源</div>
+      <div class="step-header"><span class="step-num">3</span><span class="step-title">翻译来源</span></div>
       <div class="source-tabs">
         <button class="source-tab active" onclick="setSource('excel',this)">Excel</button>
         <button class="source-tab" onclick="setSource('ai',this)">AI 翻译</button>
@@ -543,7 +562,7 @@ select {
   <!-- 语言选择 -->
   <div class="card">
     <div class="card-body">
-      <div class="section-label">目标语言</div>
+      <div class="step-header"><span class="step-num">4</span><span class="step-title">目标语言</span></div>
       <div class="lang-toolbar">
         <div style="display:flex;align-items:center;gap:10px;">
           <button class="lang-action-btn primary" onclick="selectAll()">全选</button>
