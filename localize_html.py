@@ -739,7 +739,7 @@ function buildParams(locales) {
 }
 
 function startRun() {
-  const locales = ALL_LOCALES.filter(l => chipStates[l] === 'sel');
+  const locales = ALL_LOCALES.filter(l => l && chipStates[l] === 'sel');
   if (!locales.length || !currentPage) return;
   if (currentSource === 'excel' && !document.getElementById('sheetName').value.trim()) {
     alert('请填写 Sheet 名称，或切换到 AI 翻译模式');

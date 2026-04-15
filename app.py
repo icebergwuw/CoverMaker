@@ -943,7 +943,7 @@ def api_localize_run():
     page_id          = int(raw_id)
     page_title       = request.args.get("page_title", "")
     page_slug        = request.args.get("page_slug", "")
-    locales          = request.args.get("locales", "").split(",")
+    locales          = [l for l in request.args.get("locales", "").split(",") if l.strip()]
     sheet_name       = request.args.get("sheet_name", "")
     excel_path       = request.args.get("excel_path", "")
     translation_mode = request.args.get("translation_mode", "excel")
