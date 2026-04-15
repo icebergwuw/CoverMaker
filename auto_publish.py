@@ -49,8 +49,22 @@ def _save_published(tools: list):
 # ── Gemini API 调用 ───────────────────────────────────────
 
 def gemini_ask(prompt: str, model: str = None, timeout: int = 300) -> str:
-    """调用 Gemini API，返回完整回复文本。429 限流自动重试。"""
-    import time
+    """调用 dvcode -p 作为 AI 后端；若不可用则回退到 Gemini HTTP API。"""
+    import time, shutil, subprocess as _sp
+    # ── 优先用 dvcode（无需 API key）────────────────────────────────────────
+    if shutil.which("dvcode"):
+        try:
+            result = _sp.run(
+                ["dvcode", "-p", prompt],
+                capture_output=True, text=True, timeout=timeout
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except Exception:
+            pass  # fallback to Gemini HTTP
+    # ── fallback：Gemini HTTP API ────────────────────────────────────────────
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY 未配置，且 dvcode 不可用")
     if model is None:
         model = GEMINI_MODEL
     url = f"{GEMINI_BASE}/{model}:generateContent?key={GEMINI_API_KEY}"
