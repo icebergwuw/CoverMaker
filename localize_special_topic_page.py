@@ -732,7 +732,7 @@ def fetch_fr_blocks(new_id: int) -> list:
     return resp.json()["data"]["attributes"].get("blocks", [])
 
 
-def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
+def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict, force_truncate: bool = False) -> list:
     """
     构建 PUT 用的完整 blocks 数组：
     - 保留所有已创建 block 的 id
@@ -1069,7 +1069,7 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True, f
     # 5. PUT 补全 trustedBy（POST 时无法传 trustedBy，需单独 PUT）
     print(f"[5/5] 补全 trustedBy 并发布...")
     fr_blocks = fetch_fr_blocks(new_id)
-    patch_blocks = build_patch_blocks(fr_blocks, en_blocks, t_map)
+    patch_blocks = build_patch_blocks(fr_blocks, en_blocks, t_map, force_truncate=force_truncate)
 
     from datetime import datetime, timezone
     published_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z") if publish else None
@@ -1145,7 +1145,7 @@ def _localize_with_tmap(
 
     # PUT 补全 trustedBy 并发布
     fr_blocks   = fetch_fr_blocks(new_id)
-    patch_blocks = build_patch_blocks(fr_blocks, en_blocks, t_map)
+    patch_blocks = build_patch_blocks(fr_blocks, en_blocks, t_map, force_truncate=True)
 
     published_at = datetime.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z") if publish else None
     patch_payload = {"data": {"blocks": patch_blocks}}
