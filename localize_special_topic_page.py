@@ -986,6 +986,22 @@ def verify(fr_page_id: int, en_blocks: list, locale: str, t_map: dict):
     return len(warnings) == 0
 
 
+def _find_locale_id(page_id: int, locale: str) -> int | None:
+    """查询 page_id 下已存在的 locale 版本 id。"""
+    resp = requests.get(
+        f"{CMS_BASE}/api/special-topic-pages/{page_id}",
+        headers=headers(),
+        params={"populate": "localizations"},
+    )
+    if resp.status_code != 200:
+        return None
+    locs = resp.json().get("data", {}).get("attributes", {}).get("localizations", {}).get("data", [])
+    for loc in locs:
+        if loc.get("attributes", {}).get("locale") == locale:
+            return loc.get("id")
+    return None
+
+
 def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True, force_truncate: bool = False):
     print(f"\n=== localize_special_topic_page ===")
     print(f"  page_id        : {page_id}")
@@ -1020,17 +1036,35 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True, f
         "blocks":      new_blocks,
     }
 
-    # 4. POST 创建 localization
+    # 4. POST 创建 localization（若已存在则 PUT 覆盖）
     print(f"\n[4/5] 创建 {locale} localization...")
     url = f"{CMS_BASE}/api/special-topic-pages/{page_id}/localizations"
     resp = requests.post(url, headers=headers_json(), json=payload)
-    if resp.status_code not in (200, 201):
-        print(f"  ERROR {resp.status_code}: {resp.text}")
-        raise RuntimeError(f"POST {resp.status_code}: {resp.text[:300]}")
 
-    result = resp.json()
-    new_id = result.get("id")
-    print(f"  创建成功！新 id = {new_id}, slug = {result.get('slug')}, locale = {result.get('locale')}")
+    if resp.status_code not in (200, 201):
+        err = resp.text
+        if "locale is already used" in err:
+            # 已存在该 locale，找到它的 id 然后 PUT 覆盖
+            print(f"  locale 已存在，改为 PUT 覆盖...")
+            existing_id = _find_locale_id(page_id, locale)
+            if not existing_id:
+                raise RuntimeError(f"locale {locale} 已存在但找不到其 id")
+            put_resp = requests.put(
+                f"{CMS_BASE}/api/special-topic-pages/{existing_id}",
+                headers=headers_json(),
+                json={"data": {**payload, "locale": locale}},
+            )
+            if put_resp.status_code != 200:
+                raise RuntimeError(f"PUT {put_resp.status_code}: {put_resp.text[:300]}")
+            new_id = existing_id
+            print(f"  覆盖成功！id = {new_id}")
+        else:
+            print(f"  ERROR {resp.status_code}: {err}")
+            raise RuntimeError(f"POST {resp.status_code}: {err[:300]}")
+    else:
+        result = resp.json()
+        new_id = result.get("id")
+        print(f"  创建成功！新 id = {new_id}, slug = {result.get('slug')}, locale = {result.get('locale')}")
 
     # 5. PUT 补全 trustedBy（POST 时无法传 trustedBy，需单独 PUT）
     print(f"[5/5] 补全 trustedBy 并发布...")
