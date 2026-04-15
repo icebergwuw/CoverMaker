@@ -246,12 +246,17 @@ select {
   border-radius: 20px; padding: 2px;
 }
 .lang-action-btn {
-  background: transparent; border: none;
-  color: var(--text-tertiary);
+  background: transparent; border: 1px solid var(--border-warm);
+  color: var(--text-secondary);
   font-size: 12px; font-weight: 500; font-family: var(--sans);
   cursor: pointer; padding: 4px 12px; border-radius: 18px; transition: all .15s;
 }
-.lang-action-btn:hover { background: var(--ivory); color: var(--text-primary); }
+.lang-action-btn:hover { background: var(--ivory); border-color: var(--text-tertiary); color: var(--text-primary); }
+.lang-action-btn.primary {
+  background: var(--terracotta); border-color: var(--terracotta);
+  color: #fff; font-weight: 600;
+}
+.lang-action-btn.primary:hover { background: var(--terracotta-dark, #a0522d); border-color: var(--terracotta-dark, #a0522d); }
 
 .lang-grid {
   display: grid;
@@ -541,7 +546,7 @@ select {
       <div class="section-label">目标语言</div>
       <div class="lang-toolbar">
         <div style="display:flex;align-items:center;gap:10px;">
-          <button class="lang-action-btn" onclick="selectAll()">全选</button>
+          <button class="lang-action-btn primary" onclick="selectAll()">全选</button>
           <div class="lang-count">已选 <strong id="langCountNum">0</strong> 种</div>
         </div>
         <div class="lang-actions">
