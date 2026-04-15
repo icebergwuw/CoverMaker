@@ -606,13 +606,16 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         for sf in block.get("subFeatures", []):
             sub = {
                 "layout":         sf.get("layout"),
-                "theme":          sf.get("theme"),
-                "text":           translate(sf.get("text"), t_map),
+                "text":           truncate_varchar(translate(sf.get("text"), t_map)),
                 "customizeText":  sf.get("customizeText", ""),
                 "title":          translate(sf.get("title"), t_map),
                 "customizeTitle": sf.get("customizeTitle", ""),
-                "topTitle":       sf.get("topTitle"),
             }
+            # null 可选字段不传，避免 Strapi VARCHAR 校验报 500
+            if sf.get("theme") is not None:
+                sub["theme"] = sf["theme"]
+            if sf.get("topTitle") is not None:
+                sub["topTitle"] = sf["topTitle"]
             media_id = strip_media_to_id(sf.get("media"))
             if media_id:
                 sub["media"] = {"id": media_id}
@@ -762,13 +765,15 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             for sf in en_subs:
                 sub = {
                     "layout":        sf.get("layout"),
-                    "theme":         sf.get("theme"),
-                    "text":          translate(sf.get("text"), t_map),
+                    "text":          truncate_varchar(translate(sf.get("text"), t_map)),
                     "customizeText": sf.get("customizeText", ""),
                     "title":         translate(sf.get("title"), t_map),
                     "customizeTitle": sf.get("customizeTitle", ""),
-                    "topTitle":      sf.get("topTitle"),
                 }
+                if sf.get("theme") is not None:
+                    sub["theme"] = sf["theme"]
+                if sf.get("topTitle") is not None:
+                    sub["topTitle"] = sf["topTitle"]
                 media_id = strip_media_to_id(sf.get("media"))
                 if media_id:
                     sub["media"] = {"id": media_id}
