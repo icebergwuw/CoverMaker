@@ -505,7 +505,7 @@ select {
       <div class="section-label">翻译来源</div>
       <div class="source-tabs">
         <button class="source-tab active" onclick="setSource('excel',this)">Excel</button>
-        <button class="source-tab" onclick="setSource('ai',this)">AI 翻译（Gemini）</button>
+        <button class="source-tab" onclick="setSource('ai',this)">AI 翻译</button>
       </div>
       <div class="source-section active" id="src-excel">
         <div class="field-group">

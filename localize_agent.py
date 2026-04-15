@@ -184,7 +184,13 @@ def run_localize_sse(
                         force_truncate=force_truncate,
                     )
                 else:
-                    new_id = _run_ai_localize(page_id, locale, env, lsp)
+                    # AI 翻译：边翻译边 yield 进度心跳
+                    new_id = None
+                    for _evt in _run_ai_localize_sse(page_id, locale, env, lsp):
+                        if isinstance(_evt, int):
+                            new_id = _evt
+                        else:
+                            yield _evt
 
                 yield _sse({"type": "done", "locale": locale, "new_id": new_id,
                             "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}"})
@@ -235,12 +241,18 @@ def run_localize_sse(
 
 # ── AI 翻译模式 ───────────────────────────────────────────
 
-def _run_ai_localize(page_id: int, locale: str, env: str, lsp) -> int:
+def _run_ai_localize_sse(page_id: int, locale: str, env: str, lsp):
+    """生成器：yield SSE 心跳，最后 yield new_id(int)。"""
+    yield _sse({"type": "progress", "locale": locale, "msg": "拉取英文版内容..."})
     en_attrs  = lsp.fetch_en_page(page_id)
     en_blocks = en_attrs.get("blocks", [])
     texts = _collect_en_texts(en_blocks)
+
+    yield _sse({"type": "progress", "locale": locale, "msg": f"AI 翻译 {len(texts)} 条文本..."})
     t_map = _ai_translate_batch(texts, locale)
-    return lsp._localize_with_tmap(
+
+    yield _sse({"type": "progress", "locale": locale, "msg": "写入 CMS..."})
+    new_id = lsp._localize_with_tmap(
         page_id=page_id,
         locale=locale,
         en_attrs=en_attrs,
@@ -248,6 +260,7 @@ def _run_ai_localize(page_id: int, locale: str, env: str, lsp) -> int:
         t_map=t_map,
         publish=True,
     )
+    yield new_id  # 最后返回 id
 
 
 def _collect_en_texts(blocks: list) -> list:
