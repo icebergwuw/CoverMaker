@@ -812,8 +812,15 @@ function handleSSE(ev) {
     case 'done':
       runState.done++;
       chipStates[ev.locale] = 'done'; refreshChips();
-      if (ev.fe_url) logLink('✓ ' + ev.locale, ev.fe_url);
-      else log('✓ ' + ev.locale + ' (id=' + ev.new_id + ')', 'ok');
+      if (ev.needs_publish && ev.cms_url) {
+        // 正式环境：保存为草稿，给CMS链接让用户手动发布
+        log('✓ ' + ev.locale + ' 已保存为草稿，请前往 CMS 确认后发布：', 'warn');
+        logLink('→ 在 CMS 中查看/发布', ev.cms_url, 'warn');
+      } else if (ev.fe_url) {
+        logLink('✓ ' + ev.locale, ev.fe_url);
+      } else {
+        log('✓ ' + ev.locale + ' (id=' + ev.new_id + ')', 'ok');
+      }
       updateProgress(runState.done, runState.total, '');
       break;
     case 'error':
@@ -848,10 +855,10 @@ function log(msg, cls) {
   b.appendChild(d); b.scrollTop = b.scrollHeight;
 }
 
-function logLink(label, url) {
+function logLink(label, url, cls) {
   const b = document.getElementById('logBox');
   const d = document.createElement('div');
-  d.className = 'log-ok';
+  d.className = 'log-' + (cls || 'ok');
   const a = document.createElement('a');
   a.href = url; a.target = '_blank'; a.rel = 'noopener';
   a.textContent = url;

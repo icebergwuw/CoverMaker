@@ -180,7 +180,7 @@ def run_localize_sse(
                         page_id=page_id,
                         locale=locale,
                         sheet_name=sheet_name,
-                        publish=True,
+                        publish=(env != "prod"),
                         force_truncate=force_truncate,
                     )
                 else:
@@ -192,8 +192,13 @@ def run_localize_sse(
                         else:
                             yield _evt
 
+                cms_url = (f"{cfg['base']}/admin/content-manager/collectionType/"
+                           f"api::special-topic-page.special-topic-page/{new_id}"
+                           f"?plugins[i18n][locale]={locale}") if new_id else None
                 yield _sse({"type": "done", "locale": locale, "new_id": new_id,
-                            "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}"})
+                            "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}",
+                            "cms_url": cms_url,
+                            "needs_publish": env == "prod"})
                 run_results.append({"locale": locale, "new_id": new_id, "status": "ok", "warnings": []})
 
             except lsp.VarcharTooLongError as e:
@@ -258,7 +263,7 @@ def _run_ai_localize_sse(page_id: int, locale: str, env: str, lsp):
         en_attrs=en_attrs,
         en_blocks=en_blocks,
         t_map=t_map,
-        publish=True,
+        publish=(env != "prod"),
     )
     yield new_id  # 最后返回 id
 
