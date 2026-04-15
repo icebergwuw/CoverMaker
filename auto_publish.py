@@ -7,13 +7,13 @@ auto_publish.py — 全自动：抓热点 → AI规划 → AI写文(英+法) →
 import os, re, json, subprocess, tempfile, base64, requests
 
 # ── 常量（全部从环境变量读取，本地用 .env，线上在 Railway 里配置）────
-TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "TAVILY_KEY_REMOVED")
-GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "GEMINI_KEY_REMOVED")
+TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "")
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_BASE     = "https://generativelanguage.googleapis.com/v1beta/models"
 GEMINI_MODEL    = "gemini-2.5-flash"
 
-CMS_TOKEN = os.environ.get("CMS_TOKEN", "")
-CMS_BASE  = os.environ.get("CMS_BASE", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
+CMS_TOKEN = os.environ.get("CMS_TOKEN_TEST", "")
+CMS_BASE  = os.environ.get("CMS_BASE_TEST", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
 CMS_H     = {"Authorization": f"Bearer {CMS_TOKEN}", "Content-Type": "application/json"}
 
 # 封面配色 — 根据关键词自动匹配

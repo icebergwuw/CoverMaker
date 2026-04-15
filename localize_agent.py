@@ -9,14 +9,11 @@ HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "localiz
 
 ENV_CONFIG = {
     "test": {
-        "base": "http://pdfagile-cms.aix-test-k8s.iweikan.cn",
-        "token": os.environ.get(
-            "CMS_TOKEN",
-            "943d4d58e9c61ed7ed300b801991e19e4c0f5ff395577c340a187347b1670fcf4d9026a39eff43d63a9dae041afa582ae85db8148dcc80110db98f56a3129366df98f20ccc690264afd8f061fcee8fba747d2cc4ad13f1b59897e2bdcae1b2fb930aba1ee498f866e459905cf03b6b17f4fa955f34ea45e9f327d9b0ca7cb9d2",
-        ),
+        "base": os.environ.get("CMS_BASE_TEST", "http://pdfagile-cms.aix-test-k8s.iweikan.cn"),
+        "token": os.environ.get("CMS_TOKEN_TEST", ""),
     },
     "prod": {
-        "base": "https://cms.pdfagile.com",
+        "base": os.environ.get("CMS_BASE_PROD", "https://cms.pdfagile.com"),
         "token": os.environ.get("CMS_TOKEN_PROD", ""),
     },
 }

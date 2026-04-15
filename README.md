@@ -1,99 +1,114 @@
-# Cover Maker
+# Cover Maker & Auto Publish & Localize
 
-Python + Pillow 批量生成封面图，支持三种品牌模板。
+本地 Flask 工具集，提供三个功能页面：
 
-线上地址：https://cover-maker-seven.vercel.app
-
-## 功能模式
-
-| 模式（Tab） | 尺寸 | 说明 |
+| 页面 | 路径 | 说明 |
 |---|---|---|
-| **HowToTips** | 1130×860 | 左图右文，纯色背景 + 白色竖线装饰 |
-| **Blog** | 1200×630 | 彩色背景 + 贝塞尔曲线斜线装饰，左文右图，5套配色模板 |
-| **Templates** | 1200×630 | PDF Agile 品牌模板：左侧预览图 + 右侧黑底文字 |
+| Cover Maker | `/` | 批量生成封面图（三种品牌模板） |
+| Auto Publish | `/auto-publish` | AI 全自动选题→写文→翻译→发布 |
+| Localize | `/localize` | 多语言本地化，从 Excel 读取译文写入 CMS |
 
-### Blog 模式配色模板（来自 Figma SVG 精确值）
+---
 
-| 模板 | 背景 | 斜线（粗） | 斜线（细） | 文字 |
-|---|---|---|---|---|
-| 薄荷绿 `mint`   | `#D5FFEC` | `#16724E` | `#222222` | `#222222` |
-| 暖黄 `warm`     | `#FFBE4C` | `#F16E3D` | `#000000` | `#5A1E08` |
-| 橙黄 `orange`   | `#FFD272` | `#F16E3D` 80% | `#222222` | `#222222` |
-| 青绿 `teal`     | `#84DCD4` | `#003ACD` | `#222222` | `#222222` |
-| 粉色 `pink`     | `#FFC0E5` | `#EA4B3D` 80% | `#FF8C84` | `#222222` |
-
-## 本地运行
+## 快速启动
 
 ```bash
-pip install -r requirements.txt
-python app.py
-# 浏览器自动打开 http://127.0.0.1:5299
-# Auto Publish → http://127.0.0.1:5299/auto-publish
+cd cover-maker
+python3 app.py
 ```
 
-> macOS 系统 Python 用户（无 venv）：
-> ```bash
-> /usr/bin/python3 -m pip install -r requirements.txt --user
-> ```
-> 然后双击 `启动.command` 即可，或：
-> ```bash
-> ./启动.command
-> ```
+浏览器会自动打开 `http://127.0.0.1:5299`。局域网同事可访问 `http://<你的IP>:5299`。
 
-## Auto Publish（全自动发博客）
+---
 
-访问 `http://127.0.0.1:5299/auto-publish`，点击"开始自动发布"，流程：
+## 环境变量配置
 
-1. Tavily 抓取热点趋势
-2. AI 规划选题（排除已发过的工具）
-3. AI 生成英文文章 + SEO 审核
-4. AI 翻译法文版
-5. AI 生成封面图
-6. 自动发布到 CMS（英文 + 法文）
+所有密钥统一放在 `.env`（已加入 `.gitignore`，不会提交到 git）。
 
-**依赖环境：**
-- `dvcode` CLI 已安装并在 PATH 中（用于调用 AI）
-- Tavily API Key 已配置在 `auto_publish.py`
-- CMS Bearer Token 已配置在 `publish_article.py`
-
-## CLI 用法
-
+复制模板：
 ```bash
-# HowToTips
-python make_cover.py <图片路径> "<标题>" [颜色名或HEX]
-# 颜色预设：teal / tan / navy / olive / rose / slate / warm
-
-# Blog
-python make_howtotips2_cover.py <图片路径> "<标题>" [模板名]
-# 模板名：mint / warm / orange / teal / pink
-
-# Templates (PDF Agile)
-python make_pdfagile_cover.py <预览图路径> "<标题>" [输出路径]
+cp .env.example .env
 ```
+
+然后填入对应值：
+
+| 变量 | 说明 |
+|---|---|
+| `CMS_TOKEN_TEST` | 测试环境 CMS Bearer Token |
+| `CMS_BASE_TEST` | 测试环境 CMS 地址 |
+| `CMS_TOKEN_PROD` | 正式环境 CMS Bearer Token |
+| `CMS_BASE_PROD` | 正式环境 CMS 地址 |
+| `FE_BASE_TEST` | 测试环境前端地址 |
+| `FE_BASE_PROD` | 正式环境前端地址 |
+| `TAVILY_API_KEY` | Tavily 搜索 API Key |
+| `GEMINI_API_KEY` | Google Gemini API Key |
+
+> 线上部署（Railway）时，在 Railway 控制台 Variables 里填入以上变量，不需要 `.env` 文件。
+
+---
 
 ## 项目结构
 
 ```
 cover-maker/
-├── app.py                    # Flask Web 服务（本地 + Vercel 共用）
-├── gui.py                    # Tkinter 桌面 GUI（仅支持 HowToTips 模式）
-├── make_cover.py             # HowToTips 封面生成
-├── make_howtotips2_cover.py  # Blog 封面生成（aggdraw bezier 斜线）
-├── make_pdfagile_cover.py    # PDF Agile 封面生成
+├── app.py                        # Flask 主服务，启动入口
+├── auto_publish.py               # Auto Publish 逻辑
+├── publish_article.py            # 发布文章到 CMS（测试环境）
+├── localize_agent.py             # Localize 逻辑，支持 test/prod 双环境
+├── localize_html.py              # Localize 页面 HTML/JS
+├── localize_special_topic_page.py# 专题页本地化核心逻辑
+├── make_cover.py                 # HowToTips 封面生成
+├── make_howtotips2_cover.py      # Blog 封面生成（aggdraw bezier 斜线）
+├── make_pdfagile_cover.py        # PDF Agile 封面生成
 ├── api/
-│   └── index.py              # Vercel 入口（from app import app）
-├── assets/                   # 品牌素材（背景、logo 等）
-├── fonts/
-│   └── Montserrat-Bold.ttf
-├── requirements.txt          # flask, pillow, numpy, aggdraw
-├── vercel.json
-└── CoverMaker.spec           # PyInstaller 打包配置
+│   └── index.py                  # Vercel 入口
+├── assets/                       # 品牌素材
+├── fonts/                        # 字体文件
+├── .env                          # 本地密钥（不提交 git）
+├── .env.example                  # 密钥模板（提交 git）
+├── .gitignore
+├── requirements.txt
+├── railway.json
+└── vercel.json
 ```
+
+---
+
+## Cover Maker 模板说明
+
+| 模板 | 尺寸 | 入口文件 |
+|---|---|---|
+| HowToTips | 1130×860 | `make_cover.py` |
+| Blog | 1200×630 | `make_howtotips2_cover.py` |
+| PDF Agile Templates | 1200×630 | `make_pdfagile_cover.py` |
+
+### Blog 配色
+
+| 名称 | 背景 |
+|---|---|
+| `mint` | `#D5FFEC` |
+| `warm` | `#FFBE4C` |
+| `orange` | `#FFD272` |
+| `teal` | `#84DCD4` |
+| `pink` | `#FFC0E5` |
+
+---
+
+## 依赖安装
+
+```bash
+pip install -r requirements.txt
+# 或 macOS 系统 Python：
+/usr/bin/python3 -m pip install -r requirements.txt --user
+```
+
+---
 
 ## 部署
 
+**Railway**（推荐）：push 到 GitHub，Railway 自动部署，在控制台 Variables 里配置环境变量。
+
+**Vercel**：
 ```bash
 vercel --prod
 ```
-
-

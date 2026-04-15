@@ -5,6 +5,16 @@ import os, sys, io, base64, threading, webbrowser, tempfile, json
 from flask import Flask, request, jsonify, render_template_string
 from PIL import Image
 
+# 加载 .env（本地开发用，线上环境变量由 Railway/服务器直接注入）
+_env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 sys.path.insert(0, os.path.dirname(__file__))
 from make_cover import make_cover, PRESETS
 from make_pdfagile_cover import make_pdfagile_cover
