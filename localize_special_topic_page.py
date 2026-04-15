@@ -986,8 +986,8 @@ def verify(fr_page_id: int, en_blocks: list, locale: str, t_map: dict):
     return len(warnings) == 0
 
 
-def _find_locale_id(page_id: int, locale: str) -> int | None:
-    """查询 page_id 下已存在的 locale 版本 id。"""
+def _find_locale_id(page_id: int, locale: str):
+    """查询 page_id 下已存在的 locale 版本 id，返回 int 或 None。"""
     resp = requests.get(
         f"{CMS_BASE}/api/special-topic-pages/{page_id}",
         headers=headers(),
