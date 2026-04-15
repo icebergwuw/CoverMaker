@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Cover Maker Web GUI — python3 app.py 启动，浏览器自动打开"""
+import sys
+sys.dont_write_bytecode = True  # 禁止生成 .pyc，避免缓存导致的旧代码问题
 
 import os, sys, io, base64, threading, webbrowser, tempfile, json
 from flask import Flask, request, jsonify, render_template_string
