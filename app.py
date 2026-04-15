@@ -879,7 +879,8 @@ def auto_publish_run():
 @app.route("/localize")
 def localize_page():
     from localize_html import LOCALIZE_HTML
-    return LOCALIZE_HTML
+    excel_path = os.environ.get("LOCALIZE_EXCEL", "")
+    return render_template_string(LOCALIZE_HTML, excel_path=excel_path)
 
 @app.route("/api/localize/pages")
 def api_localize_pages():

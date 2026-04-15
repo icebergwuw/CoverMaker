@@ -513,7 +513,7 @@ select {
             <label>Excel 文件路径</label>
             <div style="display:flex;gap:8px;align-items:center;">
               <input type="text" id="excelPath" placeholder="/path/to/file.xlsx"
-                     value="/Users/ice/Downloads/专题页文案与多语言本地化-更新至20260408.xlsx"
+                     value="{{ excel_path }}"
                      style="flex:1;">
               <button class="btn-ghost" onclick="pickExcelFile()" style="white-space:nowrap;flex-shrink:0;">选择文件</button>
             </div>

@@ -30,10 +30,7 @@ import openpyxl
 CMS_TOKEN = os.environ.get("CMS_TOKEN_TEST", "")
 CMS_BASE = os.environ.get("CMS_BASE_TEST", "http://pdfagile-cms.aix-test-k8s.iweikan.cn")
 
-EXCEL_PATH = os.environ.get(
-    "LOCALIZE_EXCEL",
-    os.path.expanduser("~/Downloads/专题页文案与多语言本地化-更新至20260408.xlsx"),
-)
+EXCEL_PATH = os.environ.get("LOCALIZE_EXCEL", "")
 
 # locale code → Excel 列标题映射
 LOCALE_TO_EXCEL_COL = {
