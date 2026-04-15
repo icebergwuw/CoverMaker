@@ -511,8 +511,12 @@ select {
         <div class="field-group">
           <div>
             <label>Excel 文件路径</label>
-            <input type="text" id="excelPath" placeholder="/path/to/file.xlsx"
-                   value="/Users/ice/Downloads/专题页文案与多语言本地化-更新至20260408.xlsx">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="excelPath" placeholder="/path/to/file.xlsx"
+                     value="/Users/ice/Downloads/专题页文案与多语言本地化-更新至20260408.xlsx"
+                     style="flex:1;">
+              <button class="btn-ghost" onclick="pickExcelFile()" style="white-space:nowrap;flex-shrink:0;">选择文件</button>
+            </div>
           </div>
           <div>
             <label>Sheet 名称</label>
@@ -693,6 +697,14 @@ function updateRunBtn() {
   const btn = document.getElementById('runBtn');
   btn.disabled = !currentPage || cnt === 0;
   btn.textContent = cnt > 0 ? '开始本地化（' + cnt + ' 种语言）' : '开始本地化';
+}
+
+async function pickExcelFile() {
+  try {
+    const r = await fetch('/api/localize/pick-file');
+    const d = await r.json();
+    if (d.path) document.getElementById('excelPath').value = d.path;
+  } catch(e) { /* 用户取消或出错，不做处理 */ }
 }
 
 function buildParams(locales) {

@@ -884,6 +884,30 @@ def api_localize_pages():
 def api_localize_history():
     return jsonify(localize_agent.load_history())
 
+@app.route("/api/localize/pick-file")
+def api_localize_pick_file():
+    """调用 macOS 原生文件选择对话框，返回用户选中的文件路径"""
+    import subprocess
+    script = (
+        'tell application "System Events"\n'
+        '  activate\n'
+        '  set f to choose file with prompt "选择 Excel 文件" '
+        'of type {"xlsx","xls"}\n'
+        '  return POSIX path of f\n'
+        'end tell'
+    )
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True, text=True, timeout=60
+        )
+        path = result.stdout.strip()
+        if path:
+            return jsonify({"path": path})
+        return jsonify({"path": ""}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/localize/run")
 def api_localize_run():
     from flask import Response, stream_with_context
