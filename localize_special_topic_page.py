@@ -699,6 +699,12 @@ def convert_block(block: dict, t_map: dict, locale: str, force_truncate: bool = 
                 media_id = strip_media_to_id(item.get("media"))
                 if media_id:
                     ni["media"] = {"id": media_id}
+                icon_id = strip_media_to_id(item.get("icon"))
+                if icon_id:
+                    ni["icon"] = {"id": icon_id}
+                bg_id = strip_media_to_id(item.get("backgroundImage"))
+                if bg_id:
+                    ni["backgroundImage"] = {"id": bg_id}
                 new_items.append(ni)
             b["items"] = new_items
 
@@ -877,6 +883,37 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict, force_trun
                 "theme":     fb.get("theme"),
                 "steps":     steps_translated,
             })
+
+        elif comp == "feature.swiper":
+            # 从英文版重建 items，翻译 title/text，复用 media/icon/backgroundImage
+            en_sw = next((b for b in en_blocks if b["__component"] == "feature.swiper"), None)
+            en_items = (en_sw.get("items") or en_sw.get("swiperItems") or []) if en_sw else []
+            new_items = []
+            for item in en_items:
+                ni = {k: v for k, v in item.items() if k not in ("id", "backgroundImage", "media", "icon")}
+                ni["title"] = translate(item.get("title"), t_map)
+                ni["text"]  = translate(item.get("text"), t_map)
+                media_id = strip_media_to_id(item.get("media"))
+                if media_id:
+                    ni["media"] = {"id": media_id}
+                icon_id = strip_media_to_id(item.get("icon"))
+                if icon_id:
+                    ni["icon"] = {"id": icon_id}
+                bg_id = strip_media_to_id(item.get("backgroundImage"))
+                if bg_id:
+                    ni["backgroundImage"] = {"id": bg_id}
+                new_items.append(ni)
+            entry = {
+                "id":          bid,
+                "__component": comp,
+                "title":       translate((en_sw or fb).get("title"), t_map),
+                "theme":       fb.get("theme"),
+                "items":       new_items,
+            }
+            bg_id = strip_media_to_id(fb.get("backgroundImage"))
+            if bg_id:
+                entry["backgroundImage"] = {"id": bg_id}
+            result.append(entry)
 
         else:
             # 其他 block：只传 id 和 __component，保持不变

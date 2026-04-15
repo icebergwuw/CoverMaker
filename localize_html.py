@@ -553,7 +553,7 @@ select {
       <div class="source-section" id="src-ai">
         <div class="ai-info">
           <span class="ai-info-icon">✦</span>
-          <span>使用 Gemini API 自动翻译，无需 Excel。适合没有翻译表的新文章。</span>
+          <span>使用 AI 自动翻译，无需 Excel。适合没有翻译表的新文章。</span>
         </div>
       </div>
     </div>
