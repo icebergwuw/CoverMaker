@@ -542,6 +542,36 @@ def strip_trusted_by(items: list) -> list:
     return [{"id": item["id"], "label": item["label"]} for item in items]
 
 
+def build_seo_payload(en_seo: dict, t_map: dict) -> dict:
+    """从英文版 SEO 构建多语言 SEO payload：翻译文本字段，复用 metaImage id。"""
+    if not en_seo:
+        return {}
+    seo = {
+        "metaTitle":       translate(en_seo.get("metaTitle"), t_map),
+        "metaDescription": translate(en_seo.get("metaDescription"), t_map),
+    }
+    # 可选字段：原样复制
+    for field in ("keywords", "metaRobots", "metaViewport", "canonicalURL"):
+        if en_seo.get(field) is not None:
+            seo[field] = en_seo[field]
+    # metaImage：只传 id
+    img_data = (en_seo.get("metaImage") or {}).get("data")
+    if img_data:
+        seo["metaImage"] = {"id": img_data["id"]}
+    # metaSocial：翻译 title/description
+    social_list = en_seo.get("metaSocial") or []
+    if social_list:
+        seo["metaSocial"] = [
+            {
+                "socialNetwork": s.get("socialNetwork"),
+                "title":         translate(s.get("title"), t_map),
+                "description":   translate(s.get("description"), t_map),
+            }
+            for s in social_list
+        ]
+    return seo
+
+
 def convert_block(block: dict, t_map: dict, locale: str, force_truncate: bool = False) -> dict:
     """
     将英文版 block 转换为目标语言版本：
@@ -1066,12 +1096,18 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True, f
         new_blocks.append(converted)
         print(f"  ✓ {block['__component']}  →  {converted.get('title', '')[:50] or '(no title)'}")
 
+    en_seo = en_attrs.get("seo") or {}
+    seo_payload = build_seo_payload(en_seo, t_map)
+
     payload = {
         "locale":      locale,
         "slug":        en_attrs["slug"],  # 与英文版保持一致
         "navbarStyle": en_attrs.get("navbarStyle"),
         "blocks":      new_blocks,
     }
+    if seo_payload:
+        payload["seo"] = seo_payload
+        print(f"  ✓ SEO  →  {seo_payload.get('metaTitle','')[:60]}")
 
     # 4. POST 创建 localization（若已存在则 PUT 覆盖）
     print(f"\n[4/5] 创建 {locale} localization...")
@@ -1161,12 +1197,17 @@ def _localize_with_tmap(
 
     blocks_payload = [convert_block(b, t_map, locale='en', force_truncate=True) for b in en_blocks]
 
+    en_seo = en_attrs.get("seo") or {}
+    seo_payload = build_seo_payload(en_seo, t_map)
+
     post_payload = {
         "locale": locale,
         "slug":   slug,
         "title":  translate(title_en, t_map) if title_en else slug,
         "blocks": blocks_payload,
     }
+    if seo_payload:
+        post_payload["seo"] = seo_payload
 
     resp = requests.post(
         f"{CMS_BASE}/api/special-topic-pages/{page_id}/localizations",
