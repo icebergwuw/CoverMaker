@@ -623,10 +623,16 @@ async function loadPages() {
       return;
     }
     sel.innerHTML = '<option value="">选择文章…</option>';
+    const total = ALL_LOCALES.length;
     pages.forEach(p => {
       const o = document.createElement('option');
       o.value = p.id;
-      o.textContent = p.title + '  (id=' + p.id + ')';
+      const done    = (p.locales || []).length;
+      const pending = total - done;
+      const badge   = pending === 0
+        ? ' ✓ 全部完成'
+        : ' · ' + pending + ' 待做';
+      o.textContent = p.title + '  (id=' + p.id + ')' + badge;
       o.dataset.locales    = JSON.stringify(p.locales);
       o.dataset.title      = p.title;
       o.dataset.slug       = p.slug || '';
