@@ -798,10 +798,12 @@ function handleSSE(ev) {
       addRetryBtn(ev.locale, ev.msg);
       break;
     case 'finished':
-      activeSSE.close();
-      document.getElementById('runBtn').disabled = false;
-      log('── 完成 ' + ev.ok + '/' + ev.total + ' ──', ev.fail > 0 ? 'warn' : 'ok');
-      loadHistory();
+      setTimeout(() => {
+        activeSSE.close();
+        document.getElementById('runBtn').disabled = false;
+        log('── 完成 ' + ev.ok + '/' + ev.total + ' ──', ev.fail > 0 ? 'warn' : 'ok');
+        loadHistory();
+      }, 200);
       break;
   }
 }
