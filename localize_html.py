@@ -678,6 +678,7 @@ function buildLangGrid() {
 }
 function toggleChip(l) {
   if (chipStates[l] === 'done') return;
+  // fail 和 '' 都可以切换到 sel，sel 切回 ''
   chipStates[l] = chipStates[l] === 'sel' ? '' : 'sel';
   refreshChips(); updateRunBtn();
 }
@@ -692,7 +693,7 @@ function refreshChips() {
 }
 function selectAll()     { ALL_LOCALES.forEach(l => { if (chipStates[l] !== 'done') chipStates[l] = 'sel'; }); refreshChips(); updateRunBtn(); }
 function selectNone()    { ALL_LOCALES.forEach(l => { if (chipStates[l] === 'sel')  chipStates[l] = '';    }); refreshChips(); updateRunBtn(); }
-function selectPending() { ALL_LOCALES.forEach(l => { if (!chipStates[l])           chipStates[l] = 'sel'; }); refreshChips(); updateRunBtn(); }
+function selectPending() { ALL_LOCALES.forEach(l => { if (!chipStates[l] || chipStates[l] === 'fail') chipStates[l] = 'sel'; }); refreshChips(); updateRunBtn(); }
 
 function updateRunBtn() {
   const cnt = ALL_LOCALES.filter(l => chipStates[l] === 'sel').length;
