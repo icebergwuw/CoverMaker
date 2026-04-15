@@ -759,7 +759,13 @@ function beginSSE(url, total) {
   updateProgress(0, total, '');
   activeSSE = new EventSource(url);
   activeSSE.onmessage = e => handleSSE(JSON.parse(e.data));
-  activeSSE.onerror = () => { activeSSE.close(); log('连接中断', 'err'); };
+  activeSSE.onerror = (e) => {
+    activeSSE.close();
+    // readyState 2 = CLOSED，说明服务端主动关闭（正常结束）；否则是意外断连
+    if (activeSSE.readyState === EventSource.CLOSED) return;
+    log('连接中断，请检查服务端日志后重试', 'err');
+    document.getElementById('runBtn').disabled = false;
+  };
 }
 
 function handleSSE(ev) {

@@ -166,61 +166,71 @@ def run_localize_sse(
     run_results = []
     total = len(locales)
 
-    yield _sse({"type": "batch_start", "total": total})
+    try:
+        yield _sse({"type": "batch_start", "total": total})
 
-    for i, locale in enumerate(locales):
-        yield _sse({"type": "start", "locale": locale, "index": i + 1, "total": total})
-        try:
-            if translation_mode == "excel":
-                if not excel_path or not os.path.exists(excel_path):
-                    raise FileNotFoundError(f"Excel 文件不存在: {excel_path}")
-                lsp.EXCEL_PATH = excel_path
-                new_id = lsp.localize(
-                    page_id=page_id,
-                    locale=locale,
-                    sheet_name=sheet_name,
-                    publish=True,
-                    force_truncate=force_truncate,
-                )
-            else:
-                new_id = _run_ai_localize(page_id, locale, env, lsp)
+        for i, locale in enumerate(locales):
+            yield _sse({"type": "start", "locale": locale, "index": i + 1, "total": total})
+            try:
+                if translation_mode == "excel":
+                    if not excel_path or not os.path.exists(excel_path):
+                        raise FileNotFoundError(f"Excel 文件不存在: {excel_path}")
+                    lsp.EXCEL_PATH = excel_path
+                    new_id = lsp.localize(
+                        page_id=page_id,
+                        locale=locale,
+                        sheet_name=sheet_name,
+                        publish=True,
+                        force_truncate=force_truncate,
+                    )
+                else:
+                    new_id = _run_ai_localize(page_id, locale, env, lsp)
 
-            yield _sse({"type": "done", "locale": locale, "new_id": new_id,
-                        "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}"})
-            run_results.append({"locale": locale, "new_id": new_id, "status": "ok", "warnings": []})
+                yield _sse({"type": "done", "locale": locale, "new_id": new_id,
+                            "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}"})
+                run_results.append({"locale": locale, "new_id": new_id, "status": "ok", "warnings": []})
 
-        except lsp.VarcharTooLongError as e:
-            yield _sse({
-                "type":   "varchar_error",
-                "locale": locale,
-                "field":  e.field,
-                "length": e.length,
-                "limit":  e.limit,
-                "msg":    str(e),
-            })
-            run_results.append({"locale": locale, "new_id": None, "status": "fail", "error": str(e)})
+            except lsp.VarcharTooLongError as e:
+                yield _sse({
+                    "type":   "varchar_error",
+                    "locale": locale,
+                    "field":  e.field,
+                    "length": e.length,
+                    "limit":  e.limit,
+                    "msg":    str(e),
+                })
+                run_results.append({"locale": locale, "new_id": None, "status": "fail", "error": str(e)})
 
-        except Exception as e:
-            err_msg = str(e)[:200]
-            yield _sse({"type": "error", "locale": locale, "msg": err_msg})
-            run_results.append({"locale": locale, "new_id": None, "status": "fail", "error": err_msg})
+            except Exception as e:
+                import traceback
+                err_msg = str(e)[:300]
+                print(f"[localize_agent] ERROR {locale}: {traceback.format_exc()}")
+                yield _sse({"type": "error", "locale": locale, "msg": err_msg})
+                run_results.append({"locale": locale, "new_id": None, "status": "fail", "error": err_msg})
 
-    # 恢复环境
-    lsp.CMS_BASE  = original_base
-    lsp.CMS_TOKEN = original_token
+        ok   = sum(1 for r in run_results if r["status"] == "ok")
+        fail = total - ok
+        yield _sse({"type": "finished", "total": total, "ok": ok, "fail": fail})
 
-    ok   = sum(1 for r in run_results if r["status"] == "ok")
-    fail = total - ok
-    yield _sse({"type": "finished", "total": total, "ok": ok, "fail": fail})
+        save_history_entry({
+            "page_id":    page_id,
+            "page_title": page_title,
+            "sheet_name": sheet_name,
+            "env":        env,
+            "run_at":     datetime.now(timezone.utc).isoformat(),
+            "results":    run_results,
+        })
 
-    save_history_entry({
-        "page_id":    page_id,
-        "page_title": page_title,
-        "sheet_name": sheet_name,
-        "env":        env,
-        "run_at":     datetime.now(timezone.utc).isoformat(),
-        "results":    run_results,
-    })
+    except Exception as e:
+        import traceback
+        print(f"[localize_agent] FATAL: {traceback.format_exc()}")
+        yield _sse({"type": "error", "locale": "unknown", "msg": f"Fatal: {str(e)[:200]}"})
+        yield _sse({"type": "finished", "total": total, "ok": 0, "fail": total})
+
+    finally:
+        # 无论如何恢复环境
+        lsp.CMS_BASE  = original_base
+        lsp.CMS_TOKEN = original_token
 
 
 # ── AI 翻译模式 ───────────────────────────────────────────
