@@ -593,6 +593,7 @@ let currentEnv    = 'test';
 let currentSource = 'excel';
 let currentPage   = null;
 let chipStates    = {};
+let _origDone     = [];  // 记录 CMS 里已完成的 locale，用于 toggleChip 还原
 let runState      = null;
 let activeSSE     = null;
 
@@ -656,6 +657,7 @@ function onPageChange() {
   if (!opt || !opt.value) { currentPage = null; updateRunBtn(); return; }
   currentPage = { id: parseInt(opt.value), title: opt.dataset.title, slug: opt.dataset.slug || '' };
   const doneLocales = JSON.parse(opt.dataset.locales || '[]');
+  _origDone = doneLocales;
   const sheetName   = opt.dataset.sheet_name || '';
   document.getElementById('sheetName').value = sheetName;
   if (!sheetName) {
@@ -677,9 +679,10 @@ function buildLangGrid() {
   });
 }
 function toggleChip(l) {
-  if (chipStates[l] === 'done') return;
-  // fail 和 '' 都可以切换到 sel，sel 切回 ''
-  chipStates[l] = chipStates[l] === 'sel' ? '' : 'sel';
+  // done 状态点击 → sel（允许重做）；sel → done（取消）；其他 → sel
+  if (chipStates[l] === 'done') { chipStates[l] = 'sel'; }
+  else if (chipStates[l] === 'sel' && _origDone.includes(l)) { chipStates[l] = 'done'; }
+  else { chipStates[l] = chipStates[l] === 'sel' ? '' : 'sel'; }
   refreshChips(); updateRunBtn();
 }
 function refreshChips() {
