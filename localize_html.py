@@ -515,7 +515,9 @@ select {
               <input type="text" id="excelPath" placeholder="/path/to/file.xlsx"
                      value="{{ excel_path }}"
                      style="flex:1;">
-              <button class="btn-ghost" onclick="pickExcelFile()" style="white-space:nowrap;flex-shrink:0;">选择文件</button>
+              <button class="btn-ghost" id="pickFileBtn" style="white-space:nowrap;flex-shrink:0;">选择文件</button>
+              <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none"
+                     onchange="handleExcelFileInput(this)">
             </div>
           </div>
           <div>
@@ -699,12 +701,26 @@ function updateRunBtn() {
   btn.textContent = cnt > 0 ? '开始本地化（' + cnt + ' 种语言）' : '开始本地化';
 }
 
-async function pickExcelFile() {
+const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+document.getElementById('pickFileBtn').onclick = isLocal ? pickExcelFileLocal : () => document.getElementById('excelFileInput').click();
+
+async function pickExcelFileLocal() {
   try {
     const r = await fetch('/api/localize/pick-file');
     const d = await r.json();
     if (d.path) document.getElementById('excelPath').value = d.path;
-  } catch(e) { /* 用户取消或出错，不做处理 */ }
+  } catch(e) {}
+}
+
+async function handleExcelFileInput(input) {
+  if (!input.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  try {
+    const r = await fetch('/api/localize/upload-excel', {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.path) document.getElementById('excelPath').value = d.path;
+  } catch(e) {}
 }
 
 function buildParams(locales) {

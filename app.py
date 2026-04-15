@@ -897,7 +897,9 @@ def api_localize_history():
 
 @app.route("/api/localize/pick-file")
 def api_localize_pick_file():
-    """调用 macOS 原生文件选择对话框，返回用户选中的文件路径"""
+    """调用 macOS 原生文件选择对话框，仅限本机访问"""
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return jsonify({"error": "仅限本机使用"}), 403
     import subprocess
     script = (
         'tell application "System Events"\n'
@@ -918,6 +920,17 @@ def api_localize_pick_file():
         return jsonify({"path": ""}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/localize/upload-excel", methods=["POST"])
+def api_localize_upload_excel():
+    """局域网用户上传 Excel 文件，保存到临时目录"""
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "没有文件"}), 400
+    suffix = os.path.splitext(f.filename)[1] or ".xlsx"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix="localize_excel_")
+    f.save(tmp.name)
+    return jsonify({"path": tmp.name})
 
 @app.route("/api/localize/run")
 def api_localize_run():
