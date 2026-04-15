@@ -353,6 +353,12 @@ function handleSSE(ev) {
       break;
     case 'progress':
       log('  ' + ev.msg, 'dim'); break;
+    case 'varchar_error':
+      runState.done++;
+      chipStates[ev.locale] = 'fail'; refreshChips();
+      updateProgress(runState.done, runState.total, '');
+      logVarcharError(ev);
+      break;
     case 'done':
       runState.done++;
       chipStates[ev.locale] = 'done'; refreshChips();
@@ -404,6 +410,37 @@ function logLink(label, url) {
   d.textContent = label + ' ';
   d.appendChild(a);
   b.appendChild(d); b.scrollTop = b.scrollHeight;
+}
+
+function logVarcharError(ev) {
+  const b = document.getElementById('logBox');
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'background:#2d1f00;border:1px solid #f59e0b;border-radius:6px;padding:10px 12px;margin:6px 0;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#fbbf24;font-weight:600;margin-bottom:6px;';
+  title.textContent = '⚠️ ' + ev.locale + '：字段超长，已暂停';
+  wrap.appendChild(title);
+
+  const detail = document.createElement('div');
+  detail.style.cssText = 'color:#fde68a;font-size:12px;line-height:1.6;margin-bottom:8px;';
+  detail.innerHTML =
+    '字段 <code style="background:#3d2900;padding:1px 4px;border-radius:3px;">' + ev.field + '</code> ' +
+    '翻译后长度 <b>' + ev.length + '</b> 字符，超过 Strapi 数据库 VARCHAR(<b>' + ev.limit + '</b>) 限制。<br>' +
+    '建议：进入 <b>Strapi Content-Type Builder</b>，将该字段类型改为 <b>Long text</b>，重启 Strapi 后重试。<br>' +
+    '或点击下方按钮强制截断到 ' + ev.limit + ' 字符继续（翻译内容会不完整）。';
+  wrap.appendChild(detail);
+
+  const btn = document.createElement('button');
+  btn.textContent = '强制截断并继续';
+  btn.style.cssText = 'background:#92400e;color:#fde68a;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;font-size:12px;';
+  btn.onclick = () => {
+    btn.disabled = true; btn.textContent = '重试中…';
+    beginSSE('/api/localize/retry?' + buildParams([ev.locale]) + '&force_truncate=1', 1);
+  };
+  wrap.appendChild(btn);
+
+  b.appendChild(wrap); b.scrollTop = b.scrollHeight;
 }
 
 function addRetryBtn(locale, errMsg) {

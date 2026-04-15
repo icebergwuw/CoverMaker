@@ -149,6 +149,7 @@ def run_localize_sse(
     excel_path: str,
     translation_mode: str,
     env: str,
+    force_truncate: bool = False,
 ):
     """
     Generator：逐 locale 执行本地化，yield SSE 字符串。
@@ -182,6 +183,7 @@ def run_localize_sse(
                     locale=locale,
                     sheet_name=sheet_name,
                     publish=True,
+                    force_truncate=force_truncate,
                 )
             else:
                 new_id = _run_ai_localize(page_id, locale, env, lsp)
@@ -189,6 +191,17 @@ def run_localize_sse(
             yield _sse({"type": "done", "locale": locale, "new_id": new_id,
                         "fe_url": f"{FE_BASE.get(env, '')}/{locale}/features/{page_slug}"})
             run_results.append({"locale": locale, "new_id": new_id, "status": "ok", "warnings": []})
+
+        except lsp.VarcharTooLongError as e:
+            yield _sse({
+                "type":   "varchar_error",
+                "locale": locale,
+                "field":  e.field,
+                "length": e.length,
+                "limit":  e.limit,
+                "msg":    str(e),
+            })
+            run_results.append({"locale": locale, "new_id": None, "status": "fail", "error": str(e)})
 
         except Exception as e:
             err_msg = str(e)[:200]

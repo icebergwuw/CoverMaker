@@ -407,17 +407,35 @@ def strip_media_to_id(field_val):
     return field_val
 
 
-def truncate_varchar(text: str, limit: int = 255) -> str:
-    """截断字符串到 limit 个字符（对应数据库 VARCHAR(255) 限制）。
-    在词边界截断，避免截断 UTF-8 多字节字符中间。
+class VarcharTooLongError(Exception):
+    """字段超过 Strapi VARCHAR(255) 限制时抛出，携带字段名和实际长度供上层展示。"""
+    def __init__(self, field: str, length: int, limit: int = 255):
+        self.field   = field
+        self.length  = length
+        self.limit   = limit
+        super().__init__(
+            f"字段 `{field}` 长度 {length} 超过 Strapi VARCHAR({limit}) 限制。"
+            f"建议在 Strapi Content-Type Builder 中将该字段类型改为 Long text（Text）。"
+        )
+
+
+def check_varchar(text: str, field: str, limit: int = 255, force_truncate: bool = False) -> str:
+    """检查字符串是否超过 VARCHAR 限制。
+    force_truncate=True 时截断并继续；否则抛出 VarcharTooLongError。
     """
     if text is None or len(text) <= limit:
         return text
-    # 在 limit 处往前找空格
-    cut = text.rfind(" ", 0, limit)
-    if cut < limit // 2:   # 找不到合理位置就硬截
-        cut = limit
-    return text[:cut]
+    if force_truncate:
+        cut = text.rfind(" ", 0, limit)
+        if cut < limit // 2:
+            cut = limit
+        return text[:cut]
+    raise VarcharTooLongError(field, len(text), limit)
+
+
+def truncate_varchar(text: str, limit: int = 255) -> str:
+    """兼容旧调用：直接截断（仅在 force_truncate 场景使用）。"""
+    return check_varchar(text, "unknown", limit, force_truncate=True)
 
 
 def strip_buttons(buttons: list) -> list:
@@ -530,7 +548,7 @@ def strip_trusted_by(items: list) -> list:
     return [{"id": item["id"], "label": item["label"]} for item in items]
 
 
-def convert_block(block: dict, t_map: dict, locale: str) -> dict:
+def convert_block(block: dict, t_map: dict, locale: str, force_truncate: bool = False) -> dict:
     """
     将英文版 block 转换为目标语言版本：
     - 文本字段：查翻译表，找不到保留英文
@@ -547,7 +565,7 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         if top is not None:
             b["topTitle"] = top
         b["title"]    = translate(block.get("title"), t_map)
-        b["subtitle"] = truncate_varchar(translate(block.get("subtitle"), t_map))
+        b["subtitle"] = check_varchar(translate(block.get("subtitle"), t_map), "feature-hero.subtitle", force_truncate=force_truncate)
         if block.get("layout") is not None:
             b["layout"] = block["layout"]
         if block.get("jsonData") is not None:
@@ -606,7 +624,7 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
         for sf in block.get("subFeatures", []):
             sub = {
                 "layout":         sf.get("layout"),
-                "text":           truncate_varchar(translate(sf.get("text"), t_map)),
+                "text":           check_varchar(translate(sf.get("text"), t_map), "subFeatures.text", force_truncate=force_truncate),
                 "customizeText":  sf.get("customizeText", ""),
                 "title":          translate(sf.get("title"), t_map),
                 "customizeTitle": sf.get("customizeTitle", ""),
@@ -630,7 +648,7 @@ def convert_block(block: dict, t_map: dict, locale: str) -> dict:
     elif comp == "feature.step-cards":
         b["title"]    = translate(block.get("title"), t_map)
         b["theme"]    = block.get("theme")
-        b["subtitle"] = truncate_varchar(translate(block.get("subtitle"), t_map))
+        b["subtitle"] = check_varchar(translate(block.get("subtitle"), t_map), "step-cards.subtitle", force_truncate=force_truncate)
         b["steps"]    = strip_steps(block.get("steps", []), t_map)
 
     elif comp == "feature.trust-by":
@@ -765,7 +783,7 @@ def build_patch_blocks(fr_blocks: list, en_blocks: list, t_map: dict) -> list:
             for sf in en_subs:
                 sub = {
                     "layout":        sf.get("layout"),
-                    "text":          truncate_varchar(translate(sf.get("text"), t_map)),
+                    "text":          check_varchar(translate(sf.get("text"), t_map), "subFeatures.text", force_truncate=force_truncate),
                     "customizeText": sf.get("customizeText", ""),
                     "title":         translate(sf.get("title"), t_map),
                     "customizeTitle": sf.get("customizeTitle", ""),
@@ -974,12 +992,13 @@ def verify(fr_page_id: int, en_blocks: list, locale: str, t_map: dict):
     return len(warnings) == 0
 
 
-def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
+def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True, force_truncate: bool = False):
     print(f"\n=== localize_special_topic_page ===")
-    print(f"  page_id : {page_id}")
-    print(f"  locale  : {locale}")
-    print(f"  sheet   : {sheet_name}")
-    print(f"  publish : {publish}")
+    print(f"  page_id        : {page_id}")
+    print(f"  locale         : {locale}")
+    print(f"  sheet          : {sheet_name}")
+    print(f"  publish        : {publish}")
+    print(f"  force_truncate : {force_truncate}")
     print()
 
     # 1. 拉取英文版
@@ -996,7 +1015,7 @@ def localize(page_id: int, locale: str, sheet_name: str, publish: bool = True):
     print("[3/5] 构建 payload...")
     new_blocks = []
     for block in en_blocks:
-        converted = convert_block(block, t_map, locale)
+        converted = convert_block(block, t_map, locale, force_truncate=force_truncate)
         new_blocks.append(converted)
         print(f"  ✓ {block['__component']}  →  {converted.get('title', '')[:50] or '(no title)'}")
 
@@ -1075,7 +1094,7 @@ def _localize_with_tmap(
     slug = en_slug  # 与英文版保持一致
     title_en = en_attrs.get("title") or ""
 
-    blocks_payload = [convert_block(b, t_map) for b in en_blocks]
+    blocks_payload = [convert_block(b, t_map, locale='en', force_truncate=True) for b in en_blocks]
 
     post_payload = {
         "locale": locale,

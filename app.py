@@ -768,10 +768,11 @@ def api_localize_retry():
     excel_path       = request.args.get("excel_path", "")
     translation_mode = request.args.get("translation_mode", "excel")
     env              = request.args.get("env", "test")
+    force_truncate   = request.args.get("force_truncate", "0") == "1"
     gen = localize_agent.run_localize_sse(
         page_id=page_id, page_title=page_title, page_slug=page_slug, locales=[locale],
         sheet_name=sheet_name, excel_path=excel_path,
-        translation_mode=translation_mode, env=env,
+        translation_mode=translation_mode, env=env, force_truncate=force_truncate,
     )
     return Response(
         stream_with_context(gen), mimetype="text/event-stream",
