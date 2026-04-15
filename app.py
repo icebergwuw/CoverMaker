@@ -17,101 +17,195 @@ HTML = """<!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>Cover Maker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cover Maker — PDF Agile</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #1a1a1a; color: #f0f0f0; font-family: -apple-system, sans-serif; min-height: 100vh; }
-.layout { display: flex; gap: 0; min-height: 100vh; }
+:root {
+  --bg:           #f5f5f7;
+  --surface:      #ffffff;
+  --surface-2:    #f0f0f5;
+  --border:       rgba(0,0,0,0.08);
+  --text-primary: #1d1d1f;
+  --text-secondary:#6e6e73;
+  --text-tertiary: #a1a1a6;
+  --accent:        #0071e3;
+  --accent-hover:  #0077ed;
+  --accent-light:  rgba(0,113,227,0.08);
+  --green:         #34c759;
+  --red:           #ff3b30;
+  --radius-sm:     8px;
+  --radius-md:     12px;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --font:          -apple-system, "SF Pro Display", BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--text-primary); font-family: var(--font); min-height: 100vh; display: flex; flex-direction: column; }
 
-.sidebar { width: 300px; min-width: 300px; background: #242424; padding: 28px 24px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
-.sidebar h1 { font-size: 20px; color: #4A8FA0; font-weight: 700; }
-label { font-size: 13px; color: #aaa; display: block; margin-bottom: 6px; }
+/* ── Nav ── */
+.top-nav {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex; align-items: center; height: 52px;
+  position: sticky; top: 0; z-index: 100; flex-shrink: 0;
+}
+.nav-logo { font-size: 15px; font-weight: 600; color: var(--text-primary); text-decoration: none; letter-spacing: -0.3px; margin-right: 8px; }
+.nav-sep { color: var(--border); margin: 0 4px; font-size: 18px; }
+.nav-link { display: flex; align-items: center; height: 100%; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--text-secondary); text-decoration: none; position: relative; transition: color .15s; }
+.nav-link:hover { color: var(--text-primary); }
+.nav-link.active { color: var(--accent); }
+.nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
+
+/* ── Layout ── */
+.layout { display: flex; flex: 1; min-height: 0; }
+.sidebar {
+  width: 300px; min-width: 300px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+  overflow-y: auto;
+}
+.sidebar-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; color: var(--text-primary); }
+
+label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 6px; }
 input[type=text], textarea {
-  width: 100%; background: #2d2d2d; border: 1px solid #3a3a3a; border-radius: 6px;
-  color: #f0f0f0; padding: 8px 10px; font-size: 14px; outline: none; transition: border-color .2s;
+  width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 10px;
+  font-size: 14px; font-family: var(--font); outline: none; transition: border-color .15s, box-shadow .15s;
 }
-input[type=text]:focus, textarea:focus { border-color: #4A8FA0; }
-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+input[type=text]:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.15); background: var(--surface); }
+textarea { resize: vertical; min-height: 80px; }
 
-/* 模式切换 */
-.mode-tabs { display: flex; gap: 6px; }
-.mode-tab {
-  flex: 1; padding: 8px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
-  cursor: pointer; background: #2d2d2d; color: #777; transition: all .15s;
-}
-.mode-tab.active { background: #4A8FA0; color: #fff; }
+/* ── Segmented (mode) ── */
+.seg-ctrl { display: flex; background: var(--surface-2); border-radius: var(--radius-sm); padding: 3px; gap: 2px; }
+.seg-btn { flex: 1; padding: 7px 6px; border: none; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all .15s; text-align: center; }
+.seg-btn.active { background: var(--surface); color: var(--text-primary); box-shadow: var(--shadow-sm); font-weight: 600; }
 
-.btn-sm { background: #3a3a3a; color: #f0f0f0; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-.btn-sm:hover { background: #4a4a4a; }
-
+/* ── Color swatches ── */
 .color-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.color-swatch { width: 32px; height: 32px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: border-color .15s, transform .1s; }
-.color-swatch:hover { transform: scale(1.1); }
-.color-swatch.active { border-color: #fff; }
+.color-swatch { width: 30px; height: 30px; border-radius: 7px; cursor: pointer; border: 2px solid transparent; transition: transform .1s, box-shadow .15s; }
+.color-swatch:hover { transform: scale(1.12); }
+.color-swatch.active { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
 .hex-row { display: flex; gap: 8px; align-items: center; }
-.hex-prefix { color: #aaa; font-size: 14px; }
+.hex-prefix { color: var(--text-tertiary); font-size: 14px; }
 .hex-row input { width: 90px; }
+.color-label { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
 
-.btn-main { background: #4A8FA0; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; transition: background .2s; }
-.btn-main:hover { background: #3a7f90; }
-.btn-main:disabled { background: #3a3a3a; color: #777; cursor: not-allowed; }
-.btn-dl { background: #2d2d2d; color: #aaa; border: none; border-radius: 8px; padding: 9px; font-size: 13px; cursor: pointer; width: 100%; }
-.btn-dl:hover { background: #3a3a3a; color: #f0f0f0; }
+.btn-sm { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.btn-sm:hover { background: var(--surface); color: var(--text-primary); }
+
+/* ── Drop zone ── */
+.drop-zone {
+  border: 1.5px dashed rgba(0,0,0,0.15); border-radius: var(--radius-md);
+  padding: 16px; text-align: center; color: var(--text-tertiary); font-size: 13px;
+  cursor: pointer; transition: all .15s; background: var(--surface-2);
+}
+.drop-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.drop-zone.dragover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.drop-zone.has-file { border-color: rgba(52,199,89,0.4); color: #248a3d; background: rgba(52,199,89,0.06); }
+
+/* ── Section toggle ── */
+.section { display: none; flex-direction: column; gap: 14px; }
+.section.active { display: flex; }
+
+/* ── Divider ── */
+.divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* ── Buttons ── */
+.btn-main {
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md);
+  padding: 12px; font-size: 15px; font-weight: 600; font-family: var(--font);
+  cursor: pointer; width: 100%; transition: background .15s, transform .1s, box-shadow .15s;
+  box-shadow: 0 2px 8px rgba(0,113,227,0.28);
+}
+.btn-main:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 4px 14px rgba(0,113,227,0.32); transform: translateY(-1px); }
+.btn-main:active:not(:disabled) { transform: translateY(0); }
+.btn-main:disabled { background: var(--surface-2); color: var(--text-tertiary); cursor: not-allowed; box-shadow: none; }
+.btn-dl {
+  background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 10px; font-size: 13px; font-weight: 500;
+  font-family: var(--font); cursor: pointer; width: 100%; transition: all .15s;
+}
+.btn-dl:hover:not(:disabled) { background: var(--surface); color: var(--text-primary); }
 .btn-dl:disabled { opacity: .4; cursor: not-allowed; }
 
-.status { font-size: 12px; color: #666; line-height: 1.5; min-height: 32px; }
-.status.ok  { color: #5cb85c; }
-.status.err { color: #e05555; }
+/* ── Status ── */
+.status { font-size: 12px; color: var(--text-tertiary); line-height: 1.5; min-height: 28px; }
+.status.ok  { color: #248a3d; }
+.status.err { color: #c41e3a; }
 
-.preview-area { flex: 1; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
-.preview-area img { max-width: 100%; max-height: 100vh; object-fit: contain; display: block; }
-.preview-placeholder { color: #333; font-size: 16px; }
+/* ── Preview ── */
+.preview-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: #e8e8ed; position: relative;
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.06) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+.preview-area img { max-width: 100%; max-height: calc(100vh - 52px); object-fit: contain; display: block; border-radius: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+.preview-placeholder { color: var(--text-tertiary); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.preview-placeholder-icon { font-size: 40px; opacity: .4; }
 .spinner { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
 .spinner.show { display: block; }
 @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
 .spinner svg { animation: spin 1s linear infinite; }
 
-.drop-zone { border: 2px dashed #3a3a3a; border-radius: 8px; padding: 14px; text-align: center; color: #555; font-size: 13px; cursor: pointer; transition: border-color .2s, color .2s; }
-.drop-zone.dragover { border-color: #4A8FA0; color: #4A8FA0; }
-.section { display: none; flex-direction: column; gap: 18px; }
-.section.active { display: flex; }
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
 </style>
 </head>
 <body>
+
+<nav class="top-nav">
+  <a href="/" class="nav-logo">PDF Agile Tools</a>
+  <span class="nav-sep">/</span>
+  <a href="/" class="nav-link active">Cover Maker</a>
+  <a href="/auto-publish" class="nav-link">Auto Publish</a>
+  <a href="/localize" class="nav-link">Localize</a>
+</nav>
+
 <div class="layout">
   <div class="sidebar">
-    <h1>Cover Maker</h1>
-    <div style="display:flex;flex-direction:column;gap:8px;"><a href="/auto-publish" style="display:block;background:#2d2d2d;border:1px solid #3a3a3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4A8FA0;text-decoration:none;text-align:center;">🚀 Auto Publish — 全自动抓热点发文</a><a href="/localize" style="display:block;background:#2d2d2d;border:1px solid #3a3a3a;border-radius:8px;padding:10px 14px;font-size:13px;color:#4A8FA0;text-decoration:none;text-align:center;">🌐 Localize — 多语言本地化</a></div>
+    <div class="sidebar-title">Cover Maker</div>
 
     <!-- 模式切换 -->
     <div>
       <label>模式</label>
-      <div class="mode-tabs">
-        <button class="mode-tab active" onclick="switchMode('tutorial', this)">HowToTips</button>
-        <button class="mode-tab" onclick="switchMode('pdfagile', this)">Templates</button>
-        <button class="mode-tab" onclick="switchMode('howtotips2', this)">Blog</button>
+      <div class="seg-ctrl">
+        <button class="seg-btn active" onclick="switchMode('tutorial', this)">HowToTips</button>
+        <button class="seg-btn" onclick="switchMode('pdfagile', this)">Templates</button>
+        <button class="seg-btn" onclick="switchMode('howtotips2', this)">Blog</button>
       </div>
     </div>
 
-    <!-- 图片（共用） -->
+    <div class="divider"></div>
+
+    <!-- 图片 -->
     <div>
       <label>图片</label>
-      <div class="drop-zone" id="dropZone">拖入图片 或 点击选择</div>
+      <div class="drop-zone" id="dropZone">
+        <div style="font-size:20px;margin-bottom:4px;opacity:.5">↑</div>
+        拖入图片或点击选择
+      </div>
       <input type="file" id="fileInput" accept="image/*" style="display:none">
     </div>
 
-    <!-- 标题（共用） -->
+    <!-- 标题 -->
     <div>
       <label>标题</label>
       <textarea id="titleInput" placeholder="How to Add Slide Numbers..."></textarea>
     </div>
 
-    <!-- 教程封面专属：颜色 -->
+    <!-- HowToTips 颜色 -->
     <div class="section active" id="section-tutorial">
       <div>
         <label>背景颜色</label>
         <div class="color-grid" id="colorGrid"></div>
-        <div style="margin-top:8px; font-size:12px; color:#666" id="colorLabel">Teal #4A8FA0</div>
+        <div class="color-label" id="colorLabel">Teal #4A8FA0</div>
       </div>
       <div>
         <label>自定义颜色</label>
@@ -123,21 +217,23 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
       </div>
     </div>
 
-    <!-- PDF Agile 专属：无额外参数，背景固定 -->
+    <!-- PDF Agile Templates -->
     <div class="section" id="section-pdfagile">
-      <div style="font-size:12px; color:#555; line-height:1.6">
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;background:var(--surface-2);border-radius:var(--radius-sm);padding:12px 14px;">
         背景使用 PDF Agile 品牌模板<br>上传模板截图 + 填标题即可生成
       </div>
     </div>
 
-    <!-- HowToTips 2 专属：模板选择 -->
+    <!-- Blog 颜色模板 -->
     <div class="section" id="section-howtotips2">
       <div>
         <label>颜色模板</label>
         <div class="color-grid" id="colorGrid2"></div>
-        <div style="margin-top:8px; font-size:12px; color:#666" id="colorLabel2">青绿</div>
+        <div class="color-label" id="colorLabel2">青绿</div>
       </div>
     </div>
+
+    <div class="divider"></div>
 
     <button class="btn-main" id="genBtn" onclick="generate()" disabled>生成封面</button>
     <button class="btn-dl" id="downloadBtn" onclick="downloadFile()" disabled>下载封面图</button>
@@ -145,11 +241,14 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; }
   </div>
 
   <div class="preview-area">
-    <div class="preview-placeholder" id="placeholder">预览区</div>
+    <div class="preview-placeholder" id="placeholder">
+      <div class="preview-placeholder-icon">🖼</div>
+      预览区
+    </div>
     <img id="previewImg" style="display:none" alt="preview">
     <div class="spinner" id="spinner">
       <svg width="40" height="40" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r="16" fill="none" stroke="#4A8FA0" stroke-width="4"
+        <circle cx="20" cy="20" r="16" fill="none" stroke="#0071e3" stroke-width="3.5"
                 stroke-dasharray="60 40" stroke-linecap="round"/>
       </svg>
     </div>
@@ -217,7 +316,7 @@ function applyHex() {
 
 function switchMode(mode, btn) {
   currentMode = mode;
-  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('section-' + mode).classList.add('active');
@@ -241,9 +340,8 @@ function loadFile(file) {
   const MAX_BYTES = 2 * 1024 * 1024;
   if (file.size <= MAX_BYTES) {
     selectedFile = file;
-    dropZone.textContent = '✓ ' + file.name;
-    dropZone.style.borderColor = '#4A8FA0';
-    dropZone.style.color = '#4A8FA0';
+    dropZone.innerHTML = '<div style="font-size:16px;margin-bottom:2px">✓</div>' + file.name;
+    dropZone.classList.add('has-file');
     checkReady(); schedulePreview();
     return;
   }
@@ -253,16 +351,14 @@ function loadFile(file) {
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let w = img.width, h = img.height;
-      // 按比例缩小直到文件估算 < 2MB
       const scale = Math.sqrt(MAX_BYTES / file.size) * 0.9;
       w = Math.round(w * scale); h = Math.round(h * scale);
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       canvas.toBlob(blob => {
         selectedFile = new File([blob], file.name, { type: 'image/jpeg' });
-        dropZone.textContent = '✓ ' + file.name + ' (已压缩)';
-        dropZone.style.borderColor = '#4A8FA0';
-        dropZone.style.color = '#4A8FA0';
+        dropZone.innerHTML = '<div style="font-size:16px;margin-bottom:2px">✓</div>' + file.name + ' (已压缩)';
+        dropZone.classList.add('has-file');
         checkReady(); schedulePreview();
       }, 'image/jpeg', 0.85);
     };
@@ -422,131 +518,205 @@ AUTO_PUBLISH_HTML = """<!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>Auto Publish</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto Publish — PDF Agile</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #1a1a1a; color: #f0f0f0; font-family: -apple-system, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 48px 24px; }
-.card { background: #242424; border-radius: 14px; padding: 36px 40px; width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 24px; }
-h1 { font-size: 22px; color: #4A8FA0; font-weight: 700; }
-.subtitle { font-size: 13px; color: #666; }
-label { font-size: 13px; color: #aaa; display: block; margin-bottom: 6px; }
-input[type=text], select {
-  width: 100%; background: #2d2d2d; border: 1px solid #3a3a3a; border-radius: 8px;
-  color: #f0f0f0; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color .2s;
+:root {
+  --bg:            #f5f5f7;
+  --surface:       #ffffff;
+  --surface-2:     #f0f0f5;
+  --border:        rgba(0,0,0,0.08);
+  --text-primary:  #1d1d1f;
+  --text-secondary:#6e6e73;
+  --text-tertiary: #a1a1a6;
+  --accent:        #0071e3;
+  --accent-hover:  #0077ed;
+  --accent-light:  rgba(0,113,227,0.08);
+  --green:         #34c759;
+  --green-light:   rgba(52,199,89,0.10);
+  --red:           #ff3b30;
+  --red-light:     rgba(255,59,48,0.10);
+  --radius-sm:     8px;
+  --radius-md:     12px;
+  --radius-lg:     16px;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --font:          -apple-system, "SF Pro Display", BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
-input[type=text]:focus, select:focus { border-color: #4A8FA0; }
-select option { background: #2d2d2d; }
-.btn-main {
-  background: #4A8FA0; color: #fff; border: none; border-radius: 10px;
-  padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer;
-  width: 100%; transition: background .2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+body {
+  background: var(--bg); color: var(--text-primary); font-family: var(--font);
+  min-height: 100vh; display: flex; flex-direction: column;
 }
-.btn-main:hover { background: #3a7f90; }
-.btn-main:disabled { background: #2d2d2d; color: #555; cursor: not-allowed; }
 
-/* 进度日志 */
+/* ── Nav ── */
+.top-nav {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px; display: flex; align-items: center; height: 52px;
+  position: sticky; top: 0; z-index: 100; flex-shrink: 0;
+}
+.nav-logo { font-size: 15px; font-weight: 600; color: var(--text-primary); text-decoration: none; letter-spacing: -0.3px; margin-right: 8px; }
+.nav-sep { color: var(--border); margin: 0 4px; font-size: 18px; }
+.nav-link { display: flex; align-items: center; height: 100%; padding: 0 14px; font-size: 13px; font-weight: 500; color: var(--text-secondary); text-decoration: none; position: relative; transition: color .15s; }
+.nav-link:hover { color: var(--text-primary); }
+.nav-link.active { color: var(--accent); }
+.nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
+
+/* ── Page ── */
+.page { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 40px 24px 60px; }
+.card {
+  background: var(--surface); border-radius: var(--radius-lg);
+  border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 0; overflow: hidden;
+}
+.card-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.card-section:last-child { border-bottom: none; }
+
+.page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: var(--text-primary); }
+.page-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+/* ── Steps ── */
+.steps { display: flex; align-items: flex-start; gap: 0; }
+.step { flex: 1; text-align: center; font-size: 11px; color: var(--text-tertiary); position: relative; padding-bottom: 6px; }
+.step::after {
+  content: ''; position: absolute;
+  top: 13px; left: calc(50% + 16px); right: calc(-50% + 16px);
+  height: 1.5px; background: var(--border); z-index: 0;
+}
+.step:last-child::after { display: none; }
+.step .dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-2); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 6px; font-size: 11px; font-weight: 700;
+  position: relative; z-index: 1; transition: all .2s; color: var(--text-tertiary);
+}
+.step.active .dot { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.step.active { color: var(--accent); font-weight: 500; }
+.step.done .dot { background: var(--green); border-color: var(--green); color: #fff; }
+.step.done { color: #248a3d; }
+.step.done::after { background: var(--green); }
+.step.error .dot { background: var(--red); border-color: var(--red); color: #fff; }
+.step.error { color: #c41e3a; }
+
+/* ── Run button ── */
+.btn-main {
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md);
+  padding: 14px; font-size: 16px; font-weight: 600; font-family: var(--font);
+  cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: background .15s, transform .1s, box-shadow .15s;
+  box-shadow: 0 2px 8px rgba(0,113,227,0.28);
+}
+.btn-main:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 4px 14px rgba(0,113,227,0.32); transform: translateY(-1px); }
+.btn-main:active:not(:disabled) { transform: translateY(0); }
+.btn-main:disabled { background: var(--surface-2); color: var(--text-tertiary); cursor: not-allowed; box-shadow: none; }
+
+/* ── Log box ── */
 .log-box {
-  background: #111; border-radius: 8px; padding: 16px; font-size: 12px;
-  font-family: 'SF Mono', monospace; line-height: 1.8; min-height: 60px;
-  max-height: 320px; overflow-y: auto; color: #666; display: none;
+  background: #f9f9fb; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 14px; font-size: 12px; font-family: "SF Mono", "Menlo", monospace;
+  line-height: 1.9; min-height: 60px; max-height: 300px; overflow-y: auto; display: none;
+  color: var(--text-tertiary);
 }
 .log-box.show { display: block; }
-.log-line { color: #888; }
-.log-line.done  { color: #5cb85c; }
-.log-line.error { color: #e05555; }
-.log-line.active { color: #4A8FA0; }
+.log-line { color: var(--text-tertiary); }
+.log-line.done   { color: #248a3d; }
+.log-line.error  { color: #c41e3a; }
+.log-line.active { color: var(--accent); }
 
-/* 结果卡片 */
+/* ── Result card ── */
 .result-card {
-  background: #1a1a1a; border: 1px solid #2d2d2d; border-radius: 10px;
-  padding: 20px 24px; display: none; flex-direction: column; gap: 12px;
+  background: rgba(52,199,89,0.06); border: 1px solid rgba(52,199,89,0.25);
+  border-radius: var(--radius-md); padding: 18px 20px;
+  display: none; flex-direction: column; gap: 10px;
 }
 .result-card.show { display: flex; }
-.result-title { font-size: 15px; font-weight: 600; color: #f0f0f0; }
-.result-url a { font-size: 13px; color: #4A8FA0; word-break: break-all; text-decoration: none; }
+.result-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.result-url a { font-size: 13px; color: var(--accent); word-break: break-all; text-decoration: none; }
 .result-url a:hover { text-decoration: underline; }
-.badge { display: inline-block; background: #4A8FA0; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; background: var(--green); color: #fff; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
 
-/* 步骤指示器 */
-.steps { display: flex; gap: 0; align-items: center; }
-.step { flex: 1; text-align: center; font-size: 11px; color: #444; position: relative; padding-bottom: 20px; }
-.step::after { content: ''; position: absolute; bottom: 8px; left: 50%; right: -50%; height: 2px; background: #2d2d2d; z-index: 0; }
-.step:last-child::after { display: none; }
-.step .dot { width: 28px; height: 28px; border-radius: 50%; background: #2d2d2d; border: 2px solid #3a3a3a; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; font-size: 11px; font-weight: 700; position: relative; z-index: 1; }
-.step.active .dot { border-color: #4A8FA0; color: #4A8FA0; }
-.step.active { color: #4A8FA0; }
-.step.done .dot { background: #4A8FA0; border-color: #4A8FA0; color: #fff; }
-.step.done { color: #5cb85c; }
-.step.error .dot { background: #e05555; border-color: #e05555; color: #fff; }
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
 
-/* 链接回 Cover Maker */
-.back-link { font-size: 13px; color: #555; text-decoration: none; align-self: flex-start; }
-.back-link:hover { color: #aaa; }
-
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
 .pulsing { animation: pulse 1.2s ease-in-out infinite; }
 </style>
 </head>
 <body>
-<div class="card">
-  <div>
-    <h1>Auto Publish</h1>
-    <div class="subtitle" style="margin-top:6px">自动抓热点 → AI写文 → 生成封面 → 发布 CMS</div>
-  </div>
 
-  <a class="back-link" href="/">← 返回 Cover Maker</a>
+<nav class="top-nav">
+  <a href="/" class="nav-logo">PDF Agile Tools</a>
+  <span class="nav-sep">/</span>
+  <a href="/" class="nav-link">Cover Maker</a>
+  <a href="/auto-publish" class="nav-link active">Auto Publish</a>
+  <a href="/localize" class="nav-link">Localize</a>
+</nav>
 
-  <!-- 步骤 -->
-  <div class="steps">
-    <div class="step" id="step-trends"><div class="dot">1</div>抓热点</div>
-    <div class="step" id="step-plan"><div class="dot">2</div>AI规划</div>
-    <div class="step" id="step-content"><div class="dot">3</div>写正文</div>
-    <div class="step" id="step-seo"><div class="dot">4</div>SEO优化</div>
-    <div class="step" id="step-translate"><div class="dot">5</div>法语版</div>
-    <div class="step" id="step-cover"><div class="dot">6</div>生封面</div>
-    <div class="step" id="step-publish"><div class="dot">7</div>发布</div>
-  </div>
+<div class="page">
+  <div class="card">
 
-  <button class="btn-main" id="runBtn" onclick="startPipeline()">
-    <span id="btnIcon">🚀</span>
-    <span id="btnText">开始自动发布</span>
-  </button>
+    <div class="card-section">
+      <div class="page-title">Auto Publish</div>
+      <div class="page-subtitle">自动抓热点 → AI 写文 → 生成封面 → 发布 CMS</div>
+    </div>
 
-  <!-- 日志 -->
-  <div class="log-box" id="logBox"></div>
+    <!-- 步骤 -->
+    <div class="card-section">
+      <div class="steps">
+        <div class="step" id="step-trends"><div class="dot">1</div>抓热点</div>
+        <div class="step" id="step-plan"><div class="dot">2</div>AI 规划</div>
+        <div class="step" id="step-content"><div class="dot">3</div>写正文</div>
+        <div class="step" id="step-seo"><div class="dot">4</div>SEO 优化</div>
+        <div class="step" id="step-translate"><div class="dot">5</div>法语版</div>
+        <div class="step" id="step-cover"><div class="dot">6</div>生封面</div>
+        <div class="step" id="step-publish"><div class="dot">7</div>发布</div>
+      </div>
+    </div>
 
-  <!-- 结果 -->
-  <div class="result-card" id="resultCard">
-    <div><span class="badge">已发布</span></div>
-    <div class="result-title" id="resultTitle"></div>
-    <div class="result-url"><a id="resultUrl" href="#" target="_blank"></a></div>
+    <!-- 按钮 -->
+    <div class="card-section">
+      <button class="btn-main" id="runBtn" onclick="startPipeline()">
+        <span id="btnIcon">🚀</span>
+        <span id="btnText">开始自动发布</span>
+      </button>
+    </div>
+
+    <!-- 日志 -->
+    <div class="card-section" id="logSection" style="display:none">
+      <div class="log-box show" id="logBox"></div>
+    </div>
+
+    <!-- 结果 -->
+    <div class="card-section" id="resultSection" style="display:none">
+      <div class="result-card show" id="resultCard">
+        <div><span class="badge">✓ 已发布</span></div>
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-url"><a id="resultUrl" href="#" target="_blank"></a></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
 const STEP_MAP = {
-  trends:         'step-trends',
-  trends_done:    'step-trends',
-  plan:           'step-plan',
-  plan_done:      'step-plan',
-  content:        'step-content',
-  content_done:   'step-content',
-  seo:            'step-seo',
-  seo_done:       'step-seo',
-  translate:      'step-translate',
-  translate_done: 'step-translate',
-  cover:          'step-cover',
-  cover_done:     'step-cover',
-  publish_en:     'step-publish',
-  publish_fr:     'step-publish',
-  done:           'step-publish',
+  trends:'step-trends', trends_done:'step-trends',
+  plan:'step-plan', plan_done:'step-plan',
+  content:'step-content', content_done:'step-content',
+  seo:'step-seo', seo_done:'step-seo',
+  translate:'step-translate', translate_done:'step-translate',
+  cover:'step-cover', cover_done:'step-cover',
+  publish_en:'step-publish', publish_fr:'step-publish', done:'step-publish',
 };
 
 function setStep(step, status) {
-  const id = STEP_MAP[step];
-  if (!id) return;
-  const el = document.getElementById(id);
-  if (!el) return;
+  const id = STEP_MAP[step]; if (!id) return;
+  const el = document.getElementById(id); if (!el) return;
   el.classList.remove('active','done','error');
   if (status === 'active') el.classList.add('active');
   else if (status === 'done') el.classList.add('done');
@@ -555,7 +725,7 @@ function setStep(step, status) {
 
 function addLog(step, detail, cls='active') {
   const box = document.getElementById('logBox');
-  box.classList.add('show');
+  document.getElementById('logSection').style.display = '';
   const line = document.createElement('div');
   line.className = 'log-line ' + cls;
   const icons = {trends:'🔍',trends_done:'✓',plan:'🧠',plan_done:'✓',content:'✍️',content_done:'✓',cover:'🎨',cover_done:'✓',publish:'📤',done:'✅',error:'❌'};
@@ -570,65 +740,49 @@ function startPipeline() {
   document.getElementById('btnIcon').textContent = '⏳';
   document.getElementById('btnText').textContent = '处理中...';
   document.getElementById('btnText').classList.add('pulsing');
-  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('logSection').style.display = 'none';
   document.getElementById('logBox').innerHTML = '';
 
-  // 重置步骤
   ['step-trends','step-plan','step-content','step-seo','step-translate','step-cover','step-publish']
     .forEach(id => { const el = document.getElementById(id); el.classList.remove('active','done','error'); });
 
-  // SSE 连接
-  const url = '/api/auto-publish/run';
-  const es  = new EventSource(url);
-
+  const es = new EventSource('/api/auto-publish/run');
   es.onmessage = (e) => {
     const d = JSON.parse(e.data);
     const { step, detail, status } = d;
-
     if (status === 'done') {
-      // 标记该步骤完成
-      setStep(step, 'done');
-      addLog(step, detail, 'done');
+      setStep(step, 'done'); addLog(step, detail, 'done');
     } else if (status === 'error') {
-      setStep(step, 'error');
-      addLog(step, detail, 'error');
-      btn.disabled = false;
-      document.getElementById('btnIcon').textContent = '🚀';
-      document.getElementById('btnText').textContent = '重新开始';
-      document.getElementById('btnText').classList.remove('pulsing');
-      es.close();
+      setStep(step, 'error'); addLog(step, detail, 'error');
+      resetBtn(); es.close();
     } else if (status === 'active') {
-      setStep(step, 'active');
-      addLog(step, detail, 'active');
+      setStep(step, 'active'); addLog(step, detail, 'active');
     } else if (step === 'result') {
-      // 最终结果
       const result = JSON.parse(detail);
       document.getElementById('resultTitle').textContent = result.title;
       const urlEl = document.getElementById('resultUrl');
       const enUrl = result.en ? result.en.url : result.url;
       urlEl.href = enUrl;
       urlEl.textContent = enUrl + (result.fr ? ' + 法语版' : '');
-      document.getElementById('resultCard').classList.add('show');
-      btn.disabled = false;
-      document.getElementById('btnIcon').textContent = '🚀';
-      document.getElementById('btnText').textContent = '再发一篇';
-      document.getElementById('btnText').classList.remove('pulsing');
-      es.close();
+      document.getElementById('resultSection').style.display = '';
+      resetBtn('再发一篇'); es.close();
     }
   };
-
   es.onerror = () => {
-    // CONNECTING=0 表示正在自动重连，不视为真正的错误
     if (es.readyState === EventSource.CLOSED) {
       addLog('error', '连接已关闭', 'error');
-      btn.disabled = false;
-      document.getElementById('btnIcon').textContent = '🚀';
-      document.getElementById('btnText').textContent = '重新开始';
-      document.getElementById('btnText').classList.remove('pulsing');
-      es.close();
+      resetBtn(); es.close();
     }
-    // readyState === CONNECTING (0) 时浏览器在自动重连，静默等待即可
   };
+}
+
+function resetBtn(label) {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = false;
+  document.getElementById('btnIcon').textContent = '🚀';
+  document.getElementById('btnText').textContent = label || '重新开始';
+  document.getElementById('btnText').classList.remove('pulsing');
 }
 </script>
 </body>
