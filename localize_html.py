@@ -540,9 +540,11 @@ select {
     <div class="card-body">
       <div class="section-label">目标语言</div>
       <div class="lang-toolbar">
-        <div class="lang-count">已选 <strong id="langCountNum">0</strong> 种</div>
-        <div class="lang-actions">
+        <div style="display:flex;align-items:center;gap:10px;">
           <button class="lang-action-btn" onclick="selectAll()">全选</button>
+          <div class="lang-count">已选 <strong id="langCountNum">0</strong> 种</div>
+        </div>
+        <div class="lang-actions">
           <button class="lang-action-btn" onclick="selectNone()">清空</button>
           <button class="lang-action-btn" onclick="selectPending()">未做过的</button>
         </div>
